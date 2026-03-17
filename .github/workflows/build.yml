@@ -1,0 +1,49 @@
+name: Build VS Code extension
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  linting:
+    name: Reuse linting job
+    uses: ./.github/workflows/lint.yml
+
+  build:
+    needs: linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install reqstool LSP
+        run: pipx install "reqstool[lsp]"
+
+      - name: Run headless test
+        run: npm run test-with-report
+
+      - name: Run UI tests
+        run: xvfb-run --auto-servernum npm run test:ui
+
+      - name: Build project
+        run: npm run build
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: "*.vsix"

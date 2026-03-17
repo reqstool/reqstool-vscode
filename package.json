@@ -1,0 +1,81 @@
+{
+    "name": "reqstool",
+    "displayName": "reqstool",
+    "description": "Provides reqstool LSP-based support",
+    "version": "0.1.0",
+    "publisher": "reqstool",
+    "author": "reqstool",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/reqstool/reqstool-vscode"
+    },
+    "engines": {
+        "vscode": "^1.109.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "workspaceContains:**/requirements.yml"
+    ],
+    "main": "./out/extension.js",
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src",
+        "test": "vscode-test",
+        "test-with-report": "vscode-test",
+        "test:ui": "extest setup-and-run './out/test/ui/*.test.js' --open_resource src/test/fixtures/test.code-workspace",
+        "clean": "rimraf out",
+        "build": "rimraf out && vsce package"
+    },
+    "contributes": {
+        "commands": [
+            {
+                "command": "reqstool.refresh",
+                "title": "reqstool: Refresh",
+                "category": "reqstool"
+            }
+        ],
+        "configuration": {
+            "title": "reqstool",
+            "properties": {
+                "reqstool.serverPath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to reqstool executable. Empty = use system PATH."
+                },
+                "reqstool.trace.server": {
+                    "type": "string",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Trace LSP communication."
+                }
+            }
+        }
+    },
+    "dependencies": {
+        "vscode-languageclient": "9.0.1"
+    },
+    "devDependencies": {
+        "@types/mocha": "10.0.10",
+        "@types/node": "25.3.5",
+        "@types/vscode": "1.109.0",
+        "@typescript-eslint/eslint-plugin": "8.56.1",
+        "@typescript-eslint/parser": "8.56.1",
+        "@vscode/test-cli": "0.0.12",
+        "@vscode/test-electron": "2.5.2",
+        "@vscode/vsce": "3.7.1",
+        "eslint": "10.0.3",
+        "mocha-junit-reporter": "2.2.1",
+        "rimraf": "6.1.3",
+        "typescript": "5.9.3",
+        "vscode-extension-tester": "8.22.1"
+    }
+}

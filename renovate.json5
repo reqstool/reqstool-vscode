@@ -1,0 +1,3 @@
+{
+  extends: ["github>reqstool/.github//.github/renovate.json5"],
+}
