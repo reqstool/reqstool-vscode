@@ -52,7 +52,7 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     )
 
-    const { registerSnippets } = await import('./snippets')
+    const { registerSnippets } = await import('./snippets.js')
     context.subscriptions.push(registerSnippets())
 
     await client.start()
