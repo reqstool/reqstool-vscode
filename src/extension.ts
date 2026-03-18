@@ -49,6 +49,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('reqstool.refresh', () => {
             client?.sendRequest('workspace/executeCommand', { command: 'reqstool.refresh' })
+                .catch(err => vscode.window.showErrorMessage(`reqstool refresh failed: ${err}`))
         })
     )
 

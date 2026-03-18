@@ -37,7 +37,27 @@ npm run lint
 
 ### Run the extension locally
 
-Press `F5` in VS Code to launch an Extension Development Host with the extension loaded.
+Two options:
+
+**Option A — F5 (Extension Development Host)**
+
+1. `npm run compile` (or `npm run watch` to recompile on change)
+2. Press `F5` in VS Code — a new Extension Development Host window opens with the extension loaded.
+3. In the host window, open a workspace containing a `requirements.yml` file.
+
+**Option B — Install the `.vsix`**
+
+```bash
+npm run build                                   # produces reqstool-0.1.0.vsix
+code --install-extension reqstool-*.vsix        # installs into your main VS Code
+# Reload VS Code, then open a workspace with requirements.yml
+```
+
+Uninstall when done:
+
+```bash
+code --uninstall-extension reqstool.reqstool
+```
 
 ## Testing
 
@@ -61,18 +81,14 @@ npm run test:ui
 
 ### Manual integration test
 
-1. Build and install the `.vsix`:
-
-    ```bash
-    npm run build
-    code --install-extension reqstool-*.vsix
-    ```
-
-2. Open a workspace containing a `requirements.yml` file.
-3. Hover over a `@Requirements("REQ-001")` annotation in Python or Java — a tooltip should appear.
-4. Press `Ctrl+Shift+O` in a requirements YAML file — the Outline view should show symbols.
-5. Introduce an unknown ID → the Problems panel should show a diagnostic.
-6. Open the Command Palette and run **reqstool: Refresh**.
+1. Launch the extension via Option A (F5) or Option B (vsix install) above.
+2. Open a workspace containing a `requirements.yml` file — the extension activates automatically.
+3. Check **Output → reqstool** — LSP handshake messages should be visible.
+4. Hover over a `@Requirements("REQ-001")` annotation in Python or Java — a tooltip should appear.
+5. Press `Ctrl+Shift+O` in a requirements YAML file — the Outline view should show symbols.
+6. Type `Req` in a YAML file — a snippet should appear in IntelliSense.
+7. Introduce an unknown ID → the Problems panel should show a diagnostic.
+8. Open the Command Palette and run **reqstool: Refresh**.
 
 ### Testing the "server not installed" code path
 
