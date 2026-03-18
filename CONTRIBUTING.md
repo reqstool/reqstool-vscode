@@ -47,17 +47,35 @@ Two options:
 
 **Option B — Install the `.vsix`**
 
-```bash
-npm run build                                   # produces reqstool-0.1.0.vsix
-code --install-extension reqstool-*.vsix        # installs into your main VS Code
-# Reload VS Code, then open a workspace with requirements.yml
-```
+Use this when you want to test the extension exactly as an end user would — installed into your main VS Code instance, not a sandboxed host. This is useful for testing activation, the LSP handshake, and UI behaviour against a real workspace.
+
+1. Build the package:
+
+    ```bash
+    npm run build
+    ```
+
+    This compiles the TypeScript and produces `reqstool-0.1.0.vsix` in the project root.
+
+2. Install it into VS Code:
+
+    ```bash
+    code --install-extension reqstool-*.vsix
+    ```
+
+3. Reload VS Code when prompted (or run **Developer: Reload Window** from the Command Palette).
+
+4. Open a workspace that contains a `requirements.yml` file — the extension activates automatically when that file is detected.
+
+5. To verify activation: open the **Output** panel (`Ctrl+Shift+U`) and select **reqstool** from the dropdown. You should see LSP handshake messages.
 
 Uninstall when done:
 
 ```bash
 code --uninstall-extension reqstool.reqstool
 ```
+
+> **Note:** Option B installs the built output (`out/`), not the TypeScript source. If you make code changes, re-run `npm run build` and reinstall the new `.vsix`. Option A (F5) is faster for iterative development since `npm run watch` recompiles automatically.
 
 ## Testing
 
