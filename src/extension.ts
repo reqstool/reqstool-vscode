@@ -1,7 +1,7 @@
 // Copyright © reqstool
 
 import * as vscode from 'vscode'
-import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node'
+import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 
 let client: LanguageClient | undefined
 
@@ -24,8 +24,11 @@ export async function activate(context: vscode.ExtensionContext) {
         command: serverPath,
         args: ['lsp'],
         transport: TransportKind.stdio,
-        options: { env: { ...process.env } }
+        options: { env: { ...process.env, PYTHONUNBUFFERED: '1' } }
     }
+
+    const outputChannel = vscode.window.createOutputChannel('reqstool')
+    const traceOutputChannel = vscode.window.createOutputChannel('reqstool Trace')
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [
@@ -41,17 +44,13 @@ export async function activate(context: vscode.ExtensionContext) {
             fileEvents: vscode.workspace.createFileSystemWatcher(
                 '**/{requirements,software_verification_cases,manual_verification_results,reqstool_config}.yml'
             )
-        }
+        },
+        outputChannel,
+        traceOutputChannel,
+        revealOutputChannelOn: RevealOutputChannelOn.Error,
     }
 
     client = new LanguageClient('reqstool', 'reqstool', serverOptions, clientOptions)
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.refresh', () => {
-            client?.sendRequest('workspace/executeCommand', { command: 'reqstool.refresh' })
-                .catch(err => vscode.window.showErrorMessage(`reqstool refresh failed: ${err}`))
-        })
-    )
 
     const { registerSnippets } = await import('./snippets.js')
     context.subscriptions.push(registerSnippets())
