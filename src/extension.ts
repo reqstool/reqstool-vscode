@@ -48,6 +48,20 @@ export async function activate(context: vscode.ExtensionContext) {
         outputChannel,
         traceOutputChannel,
         revealOutputChannelOn: RevealOutputChannelOn.Error,
+        middleware: {
+            // Allow command: URIs in hover markdown (e.g. go-to-definition links from the server)
+            provideHover: async (document, position, token, next) => {
+                const hover = await next(document, position, token)
+                if (hover) {
+                    for (const content of hover.contents) {
+                        if (content instanceof vscode.MarkdownString) {
+                            content.isTrusted = true
+                        }
+                    }
+                }
+                return hover
+            }
+        },
     }
 
     client = new LanguageClient('reqstool', 'reqstool', serverOptions, clientOptions)
