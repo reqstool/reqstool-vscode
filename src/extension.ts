@@ -3,6 +3,7 @@
 import * as vscode from 'vscode'
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 import { DetailsViewProvider } from './details.js'
+import { OutlineProvider } from './outline.js'
 
 let client: LanguageClient | undefined
 
@@ -73,6 +74,15 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.registerWebviewViewProvider('reqstool.detailsView', detailsProvider, {
             webviewOptions: { retainContextWhenHidden: true }
         })
+    )
+
+    const outlineProvider = new OutlineProvider(client)
+    vscode.commands.executeCommand('setContext', 'reqstool.outlineScope', 'project')
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('reqstool.outlineView', outlineProvider),
+        vscode.commands.registerCommand('reqstool.outline.scopeProject', () => outlineProvider.setScope('project')),
+        vscode.commands.registerCommand('reqstool.outline.scopeFile',    () => outlineProvider.setScope('file')),
+        vscode.window.onDidChangeActiveTextEditor(e => outlineProvider.onEditorChange(e))
     )
 
     // reqstool.refresh is advertised in server's executeCommandProvider — vscode-languageclient
