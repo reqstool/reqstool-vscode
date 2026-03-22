@@ -9,7 +9,11 @@ type Req = {
     lifecycle: { state: string; reason: string }
     categories: string[]; implementation: string; references: string[]
     implementations: { element_kind: string; fqn: string }[]
-    svcs: { id: string; urn: string; title: string; verification: string }[]
+    svcs: {
+        id: string; urn: string; title: string; verification: string
+        lifecycle_state: string
+        test_summary: { passed: number; failed: number; skipped: number; missing: number }
+    }[]
 }
 
 type Svc = {
@@ -45,8 +49,12 @@ function badge(text: string, color = 'var(--vscode-badge-background)'): string {
 }
 
 function lifecycleBadge(state: string): string {
-    if (state === 'active' || state === 'ACTIVE') { return '' }
-    const color = state.toLowerCase().includes('deprecated') ? 'var(--vscode-statusBarItem-warningBackground)' : 'var(--vscode-statusBarItem-errorBackground)'
+    const s = state.toLowerCase()
+    if (s === 'effective' || s === 'active') { return '' }
+    const color = s.includes('obsolete')   ? 'var(--vscode-statusBarItem-errorBackground)'
+                : s.includes('deprecated') ? 'var(--vscode-statusBarItem-warningBackground)'
+                : s.includes('draft')      ? 'var(--vscode-debugIcon-startForeground)'
+                :                            'var(--vscode-descriptionForeground)'
     return `<p>${badge(state, color)}</p>`
 }
 
@@ -65,6 +73,10 @@ function table(headers: string[], rows: string[][]): string {
 function prose(text: string): string {
     if (!text) { return '' }
     return `<p>${esc(text)}</p>`
+}
+
+function svcDetailsLink(id: string): string {
+    return `<a class="cmd-link" data-id="${esc(id)}" data-type="svc" href="#">${esc(id)}</a>`
 }
 
 function statusIcon(status: string): string {
@@ -88,8 +100,18 @@ function renderRequirement(d: Req): string {
             d.implementations.map(i => [esc(i.element_kind), `<code>${esc(i.fqn)}</code>`])))
 
     const svcs = section('Software Verification Cases',
-        table(['ID', 'Title', 'Verification'],
-            d.svcs.map(s => [esc(s.id), esc(s.title), esc(s.verification)])))
+        table(['ID', 'Title', 'Verification', 'Tests'],
+            d.svcs.map(s => {
+                const ts = s.test_summary
+                const testCell = ts.passed + ts.failed + ts.skipped + ts.missing === 0
+                    ? '—'
+                    : `${statusIcon('passed')} ${ts.passed} ${statusIcon('failed')} ${ts.failed} ${statusIcon('skipped')} ${ts.skipped}`
+                const svcLink = svcDetailsLink(s.id)
+                const stateBadge = s.lifecycle_state && s.lifecycle_state.toLowerCase() !== 'effective' && s.lifecycle_state.toLowerCase() !== 'active'
+                    ? ` ${badge(s.lifecycle_state)}`
+                    : ''
+                return [svcLink + stateBadge, esc(s.title), esc(s.verification), testCell]
+            })))
 
     return `
         <header>
@@ -195,7 +217,7 @@ export class DetailsPanel {
             'reqstoolDetails',
             'reqstool Details',
             vscode.ViewColumn.Beside,
-            { enableScripts: false }
+            { enableScripts: true, retainContextWhenHidden: true }
         )
         DetailsPanel.current = new DetailsPanel(panel)
         DetailsPanel.current._update(data)
@@ -204,6 +226,11 @@ export class DetailsPanel {
     private constructor(panel: vscode.WebviewPanel) {
         this._panel = panel
         this._panel.onDidDispose(() => { DetailsPanel.current = undefined })
+        this._panel.webview.onDidReceiveMessage(msg => {
+            if (msg.command === 'openDetails') {
+                vscode.commands.executeCommand('reqstool.openDetails', { id: msg.id, type: msg.type })
+            }
+        })
     }
 
     private _update(data: Record<string, unknown>): void {
@@ -224,10 +251,20 @@ export class DetailsPanel {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
     <style>${CSS}</style>
 </head>
-<body>${body}</body>
+<body>${body}
+<script>
+const vscode = acquireVsCodeApi();
+document.querySelectorAll('.cmd-link').forEach(el => {
+    el.addEventListener('click', e => {
+        e.preventDefault();
+        vscode.postMessage({ command: 'openDetails', id: el.dataset.id, type: el.dataset.type });
+    });
+});
+</script>
+</body>
 </html>`
     }
 }
