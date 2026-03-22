@@ -97,7 +97,7 @@ function renderRequirement(d: Req): string {
 
     const impls = section('Implementations',
         table(['Kind', 'FQN'],
-            d.implementations.map(i => [esc(i.element_kind), `<code class="fqn-link" data-fqn="${esc(i.fqn)}">${esc(i.fqn)}</code>`])))
+            d.implementations.map(i => [esc(i.element_kind), `<code class="fqn-link" data-fqn="${esc(i.fqn)}" data-kind="${esc(i.element_kind)}">${esc(i.fqn)}</code>`])))
 
     const svcs = section('Software Verification Cases',
         table(['ID', 'Title', 'Verification', 'Tests'],
@@ -235,15 +235,32 @@ export class DetailsPanel {
                 vscode.commands.executeCommand('reqstool.openDetails', { id: msg.id, type: msg.type })
             } else if (msg.command === 'openFqn') {
                 const fqn: string = msg.fqn
-                const symbol = fqn.split(/[.#]/).filter(Boolean).pop() ?? fqn
+                const kind: string = (msg.kind ?? '').toUpperCase()
+                const segments = fqn.split(/[.#]/).filter(Boolean)
+                // METHOD/FIELD: search by class name (Java LS indexes types, not members)
+                const isMethodOrField = kind === 'METHOD' || kind === 'FIELD'
+                const classIdx = isMethodOrField ? segments.length - 2 : segments.length - 1
+                const searchSymbol = segments[classIdx] ?? segments[segments.length - 1]
+                const memberName = isMethodOrField ? segments[segments.length - 1] : undefined
+
                 const results = await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
-                    'vscode.executeWorkspaceSymbolProvider', symbol
+                    'vscode.executeWorkspaceSymbolProvider', searchSymbol
                 )
-                const match = results?.find(r => fqn.endsWith(r.name) || r.name === symbol)
+                const match = results?.find(r => r.name === searchSymbol)
                 if (match) {
-                    await vscode.window.showTextDocument(match.location.uri, { selection: match.location.range })
+                    const editor = await vscode.window.showTextDocument(match.location.uri)
+                    if (memberName) {
+                        const docSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+                            'vscode.executeDocumentSymbolProvider', match.location.uri
+                        )
+                        const sym = DetailsPanel._findSymbol(docSymbols ?? [], memberName)
+                        if (sym) {
+                            editor.selection = new vscode.Selection(sym.range.start, sym.range.start)
+                            editor.revealRange(sym.range, vscode.TextEditorRevealType.InCenter)
+                        }
+                    }
                 } else {
-                    await vscode.commands.executeCommand('workbench.action.quickOpen', `#${symbol}`)
+                    await vscode.commands.executeCommand('workbench.action.quickOpen', `#${searchSymbol}`)
                 }
             }
         })
@@ -252,6 +269,15 @@ export class DetailsPanel {
     private _update(data: Record<string, unknown>): void {
         this._panel.title = `reqstool: ${data['id'] ?? 'Details'}`
         this._panel.webview.html = DetailsPanel._html(data as unknown as DetailsData)
+    }
+
+    static _findSymbol(symbols: vscode.DocumentSymbol[], name: string): vscode.DocumentSymbol | undefined {
+        for (const s of symbols) {
+            if (s.name === name) { return s }
+            const found = DetailsPanel._findSymbol(s.children, name)
+            if (found) { return found }
+        }
+        return undefined
     }
 
     private static _html(data: DetailsData): string {
@@ -281,7 +307,7 @@ document.querySelectorAll('.cmd-link').forEach(el => {
 });
 document.querySelectorAll('.fqn-link').forEach(el => {
     el.addEventListener('click', () => {
-        vscode.postMessage({ command: 'openFqn', fqn: el.dataset.fqn });
+        vscode.postMessage({ command: 'openFqn', fqn: el.dataset.fqn, kind: el.dataset.kind });
     });
 });
 </script>
