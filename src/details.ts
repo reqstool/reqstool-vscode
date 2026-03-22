@@ -97,7 +97,7 @@ function renderRequirement(d: Req): string {
 
     const impls = section('Implementations',
         table(['Kind', 'FQN'],
-            d.implementations.map(i => [esc(i.element_kind), `<code>${esc(i.fqn)}</code>`])))
+            d.implementations.map(i => [esc(i.element_kind), `<code class="fqn-link" data-fqn="${esc(i.fqn)}">${esc(i.fqn)}</code>`])))
 
     const svcs = section('Software Verification Cases',
         table(['ID', 'Title', 'Verification', 'Tests'],
@@ -202,6 +202,8 @@ const CSS = `
            background: var(--vscode-textCodeBlock-background); padding: 1px 4px; border-radius: 3px; }
     a.cmd-link { color: var(--vscode-textLink-foreground); text-decoration: none; cursor: pointer; }
     a.cmd-link:hover { text-decoration: underline; }
+    code.fqn-link { cursor: pointer; color: var(--vscode-textLink-foreground); }
+    code.fqn-link:hover { text-decoration: underline; }
 `
 
 export class DetailsPanel {
@@ -228,9 +230,21 @@ export class DetailsPanel {
     private constructor(panel: vscode.WebviewPanel) {
         this._panel = panel
         this._panel.onDidDispose(() => { DetailsPanel.current = undefined })
-        this._panel.webview.onDidReceiveMessage(msg => {
+        this._panel.webview.onDidReceiveMessage(async msg => {
             if (msg.command === 'openDetails') {
                 vscode.commands.executeCommand('reqstool.openDetails', { id: msg.id, type: msg.type })
+            } else if (msg.command === 'openFqn') {
+                const fqn: string = msg.fqn
+                const symbol = fqn.split(/[.#]/).filter(Boolean).pop() ?? fqn
+                const results = await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+                    'vscode.executeWorkspaceSymbolProvider', symbol
+                )
+                const match = results?.find(r => fqn.endsWith(r.name) || r.name === symbol)
+                if (match) {
+                    await vscode.window.showTextDocument(match.location.uri, { selection: match.location.range })
+                } else {
+                    await vscode.commands.executeCommand('workbench.action.quickOpen', `#${symbol}`)
+                }
             }
         })
     }
@@ -263,6 +277,11 @@ document.querySelectorAll('.cmd-link').forEach(el => {
     el.addEventListener('click', e => {
         e.preventDefault();
         vscode.postMessage({ command: 'openDetails', id: el.dataset.id, type: el.dataset.type });
+    });
+});
+document.querySelectorAll('.fqn-link').forEach(el => {
+    el.addEventListener('click', () => {
+        vscode.postMessage({ command: 'openFqn', fqn: el.dataset.fqn });
     });
 });
 </script>
