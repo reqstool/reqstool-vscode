@@ -250,6 +250,8 @@ export class DetailsPanel {
                 if (match) {
                     const editor = await vscode.window.showTextDocument(match.location.uri)
                     if (memberName) {
+                        // Language server may need a moment to parse the newly opened file
+                        await new Promise(r => setTimeout(r, 500))
                         const docSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
                             'vscode.executeDocumentSymbolProvider', match.location.uri
                         )
@@ -273,7 +275,8 @@ export class DetailsPanel {
 
     static _findSymbol(symbols: vscode.DocumentSymbol[], name: string): vscode.DocumentSymbol | undefined {
         for (const s of symbols) {
-            if (s.name === name) { return s }
+            // Java LS appends "()" or parameter types to method names in document symbols
+            if (s.name === name || s.name.startsWith(name + '(')) { return s }
             const found = DetailsPanel._findSymbol(s.children, name)
             if (found) { return found }
         }
