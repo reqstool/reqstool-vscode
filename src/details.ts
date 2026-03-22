@@ -75,8 +75,8 @@ function prose(text: string): string {
     return `<p>${esc(text)}</p>`
 }
 
-function svcDetailsLink(id: string): string {
-    return `<a class="cmd-link" data-id="${esc(id)}" data-type="svc" href="#">${esc(id)}</a>`
+function detailsLink(id: string, type: 'requirement' | 'svc' | 'mvr'): string {
+    return `<a class="cmd-link" data-id="${esc(id)}" data-type="${type}" href="#">${esc(id)}</a>`
 }
 
 function statusIcon(status: string): string {
@@ -106,7 +106,7 @@ function renderRequirement(d: Req): string {
                 const testCell = ts.passed + ts.failed + ts.skipped + ts.missing === 0
                     ? '—'
                     : `${statusIcon('passed')} ${ts.passed} ${statusIcon('failed')} ${ts.failed} ${statusIcon('skipped')} ${ts.skipped}`
-                const svcLink = svcDetailsLink(s.id)
+                const svcLink = detailsLink(s.id, 'svc')
                 const stateBadge = s.lifecycle_state && s.lifecycle_state.toLowerCase() !== 'effective' && s.lifecycle_state.toLowerCase() !== 'active'
                     ? ` ${badge(s.lifecycle_state)}`
                     : ''
@@ -133,7 +133,7 @@ function renderSvc(d: Svc): string {
 
     const reqs = section('Requirements',
         table(['ID', 'Title', 'Lifecycle'],
-            d.requirement_ids.map(r => [esc(r.id), esc(r.title), esc(r.lifecycle_state)])))
+            d.requirement_ids.map(r => [detailsLink(r.id, 'requirement'), esc(r.title), esc(r.lifecycle_state)])))
 
     const results = section('Test Results',
         table(['FQN', 'Status'],
@@ -141,7 +141,7 @@ function renderSvc(d: Svc): string {
 
     const mvrs = section('Manual Verification Results',
         table(['ID', 'Passed', 'Comment'],
-            d.mvrs.map(m => [esc(m.id), m.passed ? '✓' : '✗', esc(m.comment)])))
+            d.mvrs.map(m => [detailsLink(m.id, 'mvr'), m.passed ? '✓' : '✗', esc(m.comment)])))
 
     return `
         <header>
@@ -165,7 +165,7 @@ function renderMvr(d: Mvr): string {
 
     const svcs = section('SVCs',
         table(['ID', 'URN'],
-            d.svc_ids.map(s => [esc(s.id), `<code>${esc(s.urn)}</code>`])))
+            d.svc_ids.map(s => [detailsLink(s.id, 'svc'), `<code>${esc(s.urn)}</code>`])))
 
     return `
         <header>
@@ -200,6 +200,8 @@ const CSS = `
     td { padding: 4px 8px; border-bottom: 1px solid var(--vscode-widget-border, #333); }
     code { font-family: var(--vscode-editor-font-family); font-size: 0.9em;
            background: var(--vscode-textCodeBlock-background); padding: 1px 4px; border-radius: 3px; }
+    a.cmd-link { color: var(--vscode-textLink-foreground); text-decoration: none; cursor: pointer; }
+    a.cmd-link:hover { text-decoration: underline; }
 `
 
 export class DetailsPanel {
