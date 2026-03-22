@@ -43,6 +43,11 @@
                 "title": "reqstool: Open Details"
             }
         ],
+        "menus": {
+            "commandPalette": [
+                { "command": "reqstool.openDetails", "when": "false" }
+            ]
+        },
         "configuration": {
             "title": "reqstool",
             "properties": {

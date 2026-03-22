@@ -70,7 +70,11 @@ export async function activate(context: vscode.ExtensionContext) {
     // registers and routes it automatically via ExecuteCommandFeature. No manual registration needed.
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.openDetails', async (args: { id: string; type: string }) => {
+        vscode.commands.registerCommand('reqstool.openDetails', async (args: { id: string; type: string } | undefined) => {
+            if (!args?.id || !args?.type) {
+                vscode.window.showInformationMessage('reqstool: Open Details must be invoked from a hover link.')
+                return
+            }
             if (!client) { return }
             try {
                 const data = await client.sendRequest<Record<string, unknown> | null>('reqstool/details', args)
