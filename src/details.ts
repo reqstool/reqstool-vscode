@@ -96,7 +96,7 @@ function renderRequirement(d: Req): string {
     ].filter(Boolean).join(' &nbsp;·&nbsp; ')
 
     const impls = section('Implementations',
-        table(['Kind', 'FQN'],
+        table(['Kind', 'Fully Qualified Name'],
             d.implementations.map(i => [esc(i.element_kind), `<code class="fqn-link" data-fqn="${esc(i.fqn)}" data-kind="${esc(i.element_kind)}">${esc(i.fqn)}</code>`])))
 
     const svcs = section('Software Verification Cases',
@@ -136,7 +136,7 @@ function renderSvc(d: Svc): string {
             d.requirement_ids.map(r => [detailsLink(r.id, 'requirement'), esc(r.title), esc(r.lifecycle_state)])))
 
     const results = section('Test Results',
-        table(['FQN', 'Status'],
+        table(['Fully Qualified Name', 'Status'],
             d.test_results.map(t => [`<code>${esc(t.fqn)}</code>`, statusIcon(t.status)])))
 
     const mvrs = section('Manual Verification Results',
