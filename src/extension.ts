@@ -66,12 +66,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     client = new LanguageClient('reqstool', 'reqstool', serverOptions, clientOptions)
 
-    context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.refresh', () => {
-            client?.sendRequest('workspace/executeCommand', { command: 'reqstool.refresh' })
-                .catch(err => vscode.window.showErrorMessage(`reqstool refresh failed: ${err}`))
-        })
-    )
+    // reqstool.refresh is advertised in server's executeCommandProvider — vscode-languageclient
+    // registers and routes it automatically via ExecuteCommandFeature. No manual registration needed.
 
     context.subscriptions.push(
         vscode.commands.registerCommand('reqstool.openDetails', async (args: { id: string; type: string }) => {
