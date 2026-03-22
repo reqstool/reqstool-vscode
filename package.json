@@ -37,6 +37,10 @@
                 "command": "reqstool.refresh",
                 "title": "reqstool: Refresh",
                 "category": "reqstool"
+            },
+            {
+                "command": "reqstool.openDetails",
+                "title": "reqstool: Open Details"
             }
         ],
         "configuration": {

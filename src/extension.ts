@@ -66,6 +66,30 @@ export async function activate(context: vscode.ExtensionContext) {
 
     client = new LanguageClient('reqstool', 'reqstool', serverOptions, clientOptions)
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand('reqstool.refresh', () => {
+            client?.sendRequest('workspace/executeCommand', { command: 'reqstool.refresh' })
+                .catch(err => vscode.window.showErrorMessage(`reqstool refresh failed: ${err}`))
+        })
+    )
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('reqstool.openDetails', async (args: { id: string; type: string }) => {
+            if (!client) { return }
+            try {
+                const data = await client.sendRequest<Record<string, unknown> | null>('reqstool/details', args)
+                if (!data) {
+                    vscode.window.showWarningMessage(`reqstool: no details found for ${args.id}`)
+                    return
+                }
+                const { DetailsPanel } = await import('./details.js')
+                DetailsPanel.show(data)
+            } catch (err) {
+                vscode.window.showErrorMessage(`reqstool: failed to load details for ${args.id}: ${err}`)
+            }
+        })
+    )
+
     const { registerSnippets } = await import('./snippets.js')
     context.subscriptions.push(registerSnippets())
 
