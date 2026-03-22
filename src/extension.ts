@@ -2,6 +2,7 @@
 
 import * as vscode from 'vscode'
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node'
+import { DetailsViewProvider } from './details.js'
 
 let client: LanguageClient | undefined
 
@@ -66,6 +67,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
     client = new LanguageClient('reqstool', 'reqstool', serverOptions, clientOptions)
 
+    const detailsProvider = new DetailsViewProvider()
+    DetailsViewProvider.instance = detailsProvider
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider('reqstool.detailsView', detailsProvider, {
+            webviewOptions: { retainContextWhenHidden: true }
+        })
+    )
+
     // reqstool.refresh is advertised in server's executeCommandProvider — vscode-languageclient
     // registers and routes it automatically via ExecuteCommandFeature. No manual registration needed.
 
@@ -82,8 +91,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     vscode.window.showWarningMessage(`reqstool: no details found for ${args.id}`)
                     return
                 }
-                const { DetailsPanel } = await import('./details.js')
-                DetailsPanel.show(data)
+                DetailsViewProvider.instance?.show(data)
             } catch (err) {
                 vscode.window.showErrorMessage(`reqstool: failed to load details for ${args.id}: ${err}`)
             }

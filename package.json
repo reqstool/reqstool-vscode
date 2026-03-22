@@ -16,7 +16,8 @@
         "Other"
     ],
     "activationEvents": [
-        "workspaceContains:**/requirements.yml"
+        "workspaceContains:**/requirements.yml",
+        "onView:reqstool.detailsView"
     ],
     "main": "./out/extension.js",
     "scripts": {
@@ -32,6 +33,22 @@
         "build": "rimraf out && vsce package"
     },
     "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                { "id": "reqstool", "title": "reqstool", "icon": "media/reqstool.svg" }
+            ]
+        },
+        "views": {
+            "reqstool": [
+                { "type": "webview", "id": "reqstool.detailsView", "name": "Details" }
+            ]
+        },
+        "viewsWelcome": [
+            {
+                "view": "reqstool.detailsView",
+                "contents": "No item selected.\n\nHover over a requirement, SVC, or MVR ID and click **Open Details**."
+            }
+        ],
         "commands": [
             {
                 "command": "reqstool.refresh",

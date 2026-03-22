@@ -206,31 +206,20 @@ const CSS = `
     code.fqn-link:hover { text-decoration: underline; }
 `
 
-export class DetailsPanel {
-    static current: DetailsPanel | undefined
+export class DetailsViewProvider implements vscode.WebviewViewProvider {
+    static instance: DetailsViewProvider | undefined
 
-    private readonly _panel: vscode.WebviewPanel
+    private _view: vscode.WebviewView | undefined
+    private _pendingData: Record<string, unknown> | undefined
 
-    static show(data: Record<string, unknown>): void {
-        if (DetailsPanel.current) {
-            DetailsPanel.current._panel.reveal()
-            DetailsPanel.current._update(data)
-            return
-        }
-        const panel = vscode.window.createWebviewPanel(
-            'reqstoolDetails',
-            'reqstool Details',
-            vscode.ViewColumn.Beside,
-            { enableScripts: true, retainContextWhenHidden: true }
-        )
-        DetailsPanel.current = new DetailsPanel(panel)
-        DetailsPanel.current._update(data)
-    }
-
-    private constructor(panel: vscode.WebviewPanel) {
-        this._panel = panel
-        this._panel.onDidDispose(() => { DetailsPanel.current = undefined })
-        this._panel.webview.onDidReceiveMessage(async msg => {
+    resolveWebviewView(
+        webviewView: vscode.WebviewView,
+        _context: vscode.WebviewViewResolveContext,
+        _token: vscode.CancellationToken
+    ): void {
+        this._view = webviewView
+        webviewView.webview.options = { enableScripts: true }
+        webviewView.webview.onDidReceiveMessage(async msg => {
             if (msg.command === 'openDetails') {
                 vscode.commands.executeCommand('reqstool.openDetails', { id: msg.id, type: msg.type })
             } else if (msg.command === 'openFqn') {
@@ -255,7 +244,7 @@ export class DetailsPanel {
                         const docSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
                             'vscode.executeDocumentSymbolProvider', match.location.uri
                         )
-                        const sym = DetailsPanel._findSymbol(docSymbols ?? [], memberName)
+                        const sym = DetailsViewProvider._findSymbol(docSymbols ?? [], memberName)
                         if (sym) {
                             editor.selection = new vscode.Selection(sym.range.start, sym.range.start)
                             editor.revealRange(sym.range, vscode.TextEditorRevealType.InCenter)
@@ -266,18 +255,33 @@ export class DetailsPanel {
                 }
             }
         })
+        if (this._pendingData) {
+            this._update(this._pendingData)
+            this._pendingData = undefined
+        }
+    }
+
+    show(data: Record<string, unknown>): void {
+        if (this._view) {
+            this._view.show(true)
+            this._update(data)
+        } else {
+            this._pendingData = data
+            vscode.commands.executeCommand('reqstool.detailsView.focus')
+        }
     }
 
     private _update(data: Record<string, unknown>): void {
-        this._panel.title = `reqstool: ${data['id'] ?? 'Details'}`
-        this._panel.webview.html = DetailsPanel._html(data as unknown as DetailsData)
+        if (!this._view) { return }
+        this._view.title = `${data['id'] ?? 'Details'}`
+        this._view.webview.html = DetailsViewProvider._html(data as unknown as DetailsData)
     }
 
     static _findSymbol(symbols: vscode.DocumentSymbol[], name: string): vscode.DocumentSymbol | undefined {
         for (const s of symbols) {
             // Java LS appends "()" or parameter types to method names in document symbols
             if (s.name === name || s.name.startsWith(name + '(')) { return s }
-            const found = DetailsPanel._findSymbol(s.children, name)
+            const found = DetailsViewProvider._findSymbol(s.children, name)
             if (found) { return found }
         }
         return undefined
