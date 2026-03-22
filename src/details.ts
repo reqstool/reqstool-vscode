@@ -50,10 +50,10 @@ function badge(text: string, color = 'var(--vscode-badge-background)'): string {
 
 function lifecycleBadge(state: string): string {
     const s = state.toLowerCase()
-    if (s === 'effective' || s === 'active') { return '' }
     const color = s.includes('obsolete')   ? 'var(--vscode-statusBarItem-errorBackground)'
                 : s.includes('deprecated') ? 'var(--vscode-statusBarItem-warningBackground)'
                 : s.includes('draft')      ? 'var(--vscode-debugIcon-startForeground)'
+                : s.includes('effective') || s.includes('active') ? 'var(--vscode-testing-iconPassed)'
                 :                            'var(--vscode-descriptionForeground)'
     return `<p>${badge(state, color)}</p>`
 }
