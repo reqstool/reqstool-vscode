@@ -8,10 +8,11 @@ import { OutlineProvider } from './outline.js'
 let client: LanguageClient | undefined
 
 export async function activate(context: vscode.ExtensionContext) {
-    const serverPath = resolveServerPath()
+    const cfg = vscode.workspace.getConfiguration('reqstool')
+    const [executable, serverArgs] = resolveServerCommand()
 
     // Guard: inform user if reqstool is not installed
-    if (!await checkServerInstalled(serverPath)) {
+    if (!await checkServerInstalled(executable, cfg.get<number>('startupTimeout', 5000))) {
         const action = await vscode.window.showErrorMessage(
             'reqstool is not installed or not found. Install: pipx install "reqstool[lsp]"',
             'Open Docs'
@@ -23,8 +24,8 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     const serverOptions: ServerOptions = {
-        command: serverPath,
-        args: ['lsp'],
+        command: executable,
+        args: serverArgs,
         transport: TransportKind.stdio,
         options: { env: { ...process.env, PYTHONUNBUFFERED: '1' } }
     }
@@ -33,18 +34,13 @@ export async function activate(context: vscode.ExtensionContext) {
     const traceOutputChannel = vscode.window.createOutputChannel('reqstool Trace')
 
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [
-            { scheme: 'file', language: 'python' },
-            { scheme: 'file', language: 'java' },
-            { scheme: 'file', language: 'javascript' },
-            { scheme: 'file', language: 'typescript' },
-            { scheme: 'file', language: 'javascriptreact' },
-            { scheme: 'file', language: 'typescriptreact' },
-            { scheme: 'file', language: 'yaml' },
-        ],
+        documentSelector: cfg.get<string[]>('languages',
+            ['python', 'java', 'javascript', 'typescript', 'javascriptreact', 'typescriptreact', 'yaml']
+        ).map(lang => ({ scheme: 'file', language: lang })),
         synchronize: {
             fileEvents: vscode.workspace.createFileSystemWatcher(
-                '**/{requirements,software_verification_cases,manual_verification_results,reqstool_config}.yml'
+                cfg.get<string>('fileWatchPattern',
+                    '**/{requirements,software_verification_cases,manual_verification_results,reqstool_config}.yml')
             )
         },
         outputChannel,
@@ -121,12 +117,15 @@ export async function deactivate(): Promise<void> {
     }
 }
 
-function resolveServerPath(): string {
-    const cfg = vscode.workspace.getConfiguration('reqstool').get<string>('serverPath', '').trim()
-    return cfg.length > 0 ? cfg : 'reqstool'
+function resolveServerCommand(): [string, string[]] {
+    const cmd = vscode.workspace.getConfiguration('reqstool')
+        .get<string[]>('serverCommand', ['reqstool', 'lsp'])
+        .filter(s => s.trim().length > 0)
+    const [command, ...args] = cmd.length > 0 ? cmd : ['reqstool', 'lsp']
+    return [command, args]
 }
 
-async function checkServerInstalled(executable: string): Promise<boolean> {
+async function checkServerInstalled(executable: string, timeout: number): Promise<boolean> {
     const { execFile } = await import('node:child_process')
-    return new Promise(resolve => execFile(executable, ['--version'], { timeout: 5000 }, err => resolve(!err)))
+    return new Promise(resolve => execFile(executable, ['--version'], { timeout }, err => resolve(!err)))
 }

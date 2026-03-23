@@ -240,7 +240,8 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
                     const editor = await vscode.window.showTextDocument(match.location.uri)
                     if (memberName) {
                         // Language server may need a moment to parse the newly opened file
-                        await new Promise(r => setTimeout(r, 500))
+                        const delay = vscode.workspace.getConfiguration('reqstool').get<number>('symbolLookupDelay', 500)
+                        await new Promise(r => setTimeout(r, delay))
                         const docSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
                             'vscode.executeDocumentSymbolProvider', match.location.uri
                         )

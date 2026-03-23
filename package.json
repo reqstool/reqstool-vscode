@@ -94,10 +94,11 @@
         "configuration": {
             "title": "reqstool",
             "properties": {
-                "reqstool.serverPath": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Path to reqstool executable. Empty = use system PATH."
+                "reqstool.serverCommand": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "default": ["reqstool", "lsp"],
+                    "description": "Command to start the reqstool LSP server. First element is the executable, rest are arguments. Examples: [\"reqstool\", \"lsp\"], [\"python\", \"-m\", \"reqstool.lsp\", \"lsp\"], [\"pipx\", \"run\", \"reqstool\", \"lsp\", \"--log-level\", \"debug\"]."
                 },
                 "reqstool.trace.server": {
                     "type": "string",
@@ -108,6 +109,33 @@
                     ],
                     "default": "off",
                     "description": "Trace LSP communication."
+                },
+                "reqstool.startupTimeout": {
+                    "type": "number",
+                    "default": 5000,
+                    "minimum": 1000,
+                    "description": "Milliseconds to wait when checking if reqstool is installed."
+                },
+                "reqstool.symbolLookupDelay": {
+                    "type": "number",
+                    "default": 500,
+                    "minimum": 0,
+                    "description": "Milliseconds to wait after opening a file before querying document symbols."
+                },
+                "reqstool.fileWatchPattern": {
+                    "type": "string",
+                    "default": "**/{requirements,software_verification_cases,manual_verification_results,reqstool_config}.yml",
+                    "description": "Glob pattern for reqstool YAML files to watch for changes."
+                },
+                "reqstool.languages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["python", "java", "javascript", "typescript", "javascriptreact", "typescriptreact", "yaml"]
+                    },
+                    "uniqueItems": true,
+                    "default": ["python", "java", "javascript", "typescript", "javascriptreact", "typescriptreact", "yaml"],
+                    "description": "Language IDs for which the reqstool LSP client is active."
                 }
             }
         }
