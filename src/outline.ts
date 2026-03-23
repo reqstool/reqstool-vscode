@@ -15,8 +15,8 @@ type SectionNode = { kind: 'section'; type: 'requirement' | 'svc' | 'mvr'; label
 type ItemNode    = { kind: 'item'; id: string; label: string; type: 'requirement' | 'svc' | 'mvr'; icon: string }
 type OutlineNode = SectionNode | ItemNode
 
-function lifecycleIcon(state: string): string {
-    const s = state.toLowerCase()
+function lifecycleIcon(state: string | undefined): string {
+    const s = (state ?? '').toLowerCase()
     if (s.includes('effective') || s.includes('active')) { return 'pass-filled' }
     if (s.includes('draft'))      { return 'circle-outline' }
     if (s.includes('deprecated')) { return 'warning' }
@@ -141,14 +141,14 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
 
         const [reqs, svcs] = await Promise.all([
             Promise.all([...reqIds].map(id =>
-                this._client.sendRequest<{ id: string; title: string; lifecycle_state: string } | null>(
+                this._client.sendRequest<{ id: string; title: string; lifecycle: { state: string } } | null>(
                     'reqstool/details', { id, type: 'requirement' }
-                ).then(d => d ? { id: d.id, title: d.title, lifecycle_state: d.lifecycle_state } : null)
+                ).then(d => d ? { id: d.id, title: d.title, lifecycle_state: d.lifecycle?.state ?? '' } : null)
             )),
             Promise.all([...svcIds].map(id =>
-                this._client.sendRequest<{ id: string; title: string; lifecycle_state: string; verification: string } | null>(
+                this._client.sendRequest<{ id: string; title: string; lifecycle: { state: string }; verification: string } | null>(
                     'reqstool/details', { id, type: 'svc' }
-                ).then(d => d ? { id: d.id, title: d.title, lifecycle_state: d.lifecycle_state, verification: d.verification } : null)
+                ).then(d => d ? { id: d.id, title: d.title, lifecycle_state: d.lifecycle?.state ?? '', verification: d.verification } : null)
             )),
         ])
 
