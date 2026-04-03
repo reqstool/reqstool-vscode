@@ -14,9 +14,10 @@
         "vscode": "^1.109.0"
     },
     "categories": [
-        "Programming Languages",
         "Linters",
-        "Snippets"
+        "Snippets",
+        "Other",
+        "Testing"
     ],
     "activationEvents": [
         "workspaceContains:**/requirements.yml",
