@@ -1,5 +1,7 @@
 // Copyright © reqstool
 
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import * as vscode from 'vscode'
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 import { DetailsViewProvider } from './details.js'
@@ -9,12 +11,18 @@ let client: LanguageClient | undefined
 
 export async function activate(context: vscode.ExtensionContext) {
     const cfg = vscode.workspace.getConfiguration('reqstool')
-    const [executable, serverArgs] = resolveServerCommand()
+
+    // Use managed venv unless user has explicitly configured serverCommand
+    const insp = cfg.inspect<string[]>('serverCommand')
+    const isUserConfigured = !!(insp?.globalValue || insp?.workspaceValue || insp?.workspaceFolderValue)
+    const managedBin = isUserConfigured ? undefined : await ensureManagedVenv(context)
+
+    const [executable, serverArgs] = resolveServerCommand(managedBin)
 
     // Guard: inform user if reqstool is not installed
     if (!await checkServerInstalled(executable, cfg.get<number>('startupTimeout', 5000))) {
         const action = await vscode.window.showErrorMessage(
-            'reqstool is not installed or not found. Install: pipx install "reqstool[lsp]"',
+            'reqstool is not installed or not found. Install: pipx install "reqstool"',
             'Open Docs'
         )
         if (action === 'Open Docs') {
@@ -117,12 +125,72 @@ export async function deactivate(): Promise<void> {
     }
 }
 
-function resolveServerCommand(): [string, string[]] {
-    const cmd = vscode.workspace.getConfiguration('reqstool')
-        .get<string[]>('serverCommand', ['reqstool', 'lsp'])
-        .filter(s => s.trim().length > 0)
-    const [command, ...args] = cmd.length > 0 ? cmd : ['reqstool', 'lsp']
-    return [command, args]
+async function ensureManagedVenv(context: vscode.ExtensionContext): Promise<string | undefined> {
+    const envDir = path.join(context.globalStorageUri.fsPath, 'env')
+    const bin = process.platform === 'win32' ? 'Scripts' : 'bin'
+    const exe = process.platform === 'win32' ? 'reqstool.exe' : 'reqstool'
+    const reqstoolBin = path.join(envDir, bin, exe)
+
+    // Invalidate venv on extension version upgrade
+    const storedVersion = context.globalState.get<string>('envVersion')
+    const currentVersion = context.extension.packageJSON.version as string
+    if (storedVersion !== currentVersion && fs.existsSync(envDir)) {
+        await fs.promises.rm(envDir, { recursive: true })
+    }
+
+    if (!fs.existsSync(reqstoolBin)) {
+        const python = await findPython()
+        if (!python) { return undefined }
+
+        try {
+            await vscode.window.withProgress(
+                { location: vscode.ProgressLocation.Notification, title: 'reqstool: installing…', cancellable: false },
+                async () => {
+                    const { execFile } = await import('node:child_process')
+                    const run = (cmd: string, args: string[]) =>
+                        new Promise<void>((res, rej) =>
+                            execFile(cmd, args, { timeout: 120000 }, err => err ? rej(err) : res()))
+                    await run(python, ['-m', 'venv', envDir])
+                    const pip = path.join(envDir, bin, process.platform === 'win32' ? 'pip.exe' : 'pip')
+                    await run(pip, ['install', 'reqstool'])
+                }
+            )
+            await context.globalState.update('envVersion', currentVersion)
+        } catch {
+            return undefined
+        }
+    }
+
+    return fs.existsSync(reqstoolBin) ? reqstoolBin : undefined
+}
+
+async function findPython(): Promise<string | undefined> {
+    const { execFile } = await import('node:child_process')
+    for (const candidate of ['python3', 'python']) {
+        const found = await new Promise<boolean>(resolve =>
+            execFile(candidate, ['--version'], { timeout: 3000 }, err => resolve(!err)))
+        if (found) { return candidate }
+    }
+    return undefined
+}
+
+function resolveServerCommand(managedBin?: string): [string, string[]] {
+    const cfg = vscode.workspace.getConfiguration('reqstool')
+
+    // If user explicitly configured serverCommand, always use it
+    const insp = cfg.inspect<string[]>('serverCommand')
+    const isUserConfigured = !!(insp?.globalValue || insp?.workspaceValue || insp?.workspaceFolderValue)
+    if (isUserConfigured) {
+        const cmd = cfg.get<string[]>('serverCommand', ['reqstool', 'lsp']).filter(s => s.trim().length > 0)
+        const [command, ...args] = cmd.length > 0 ? cmd : ['reqstool', 'lsp']
+        return [command, args]
+    }
+
+    // Use managed venv if available
+    if (managedBin) { return [managedBin, ['lsp']] }
+
+    // PATH fallback
+    return ['reqstool', ['lsp']]
 }
 
 async function checkServerInstalled(executable: string, timeout: number): Promise<boolean> {
