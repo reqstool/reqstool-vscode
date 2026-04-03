@@ -2,6 +2,8 @@
 
 VS Code extension for [reqstool](https://reqstool.github.io), providing full Language Server Protocol (LSP) integration for requirements traceability.
 
+reqstool links requirements, software verification cases, and manual verification results directly to your source code. This extension brings that traceability into the editor — hover over any annotated identifier to see its requirement, navigate to definitions, get inline diagnostics, and browse the full requirements outline without leaving VS Code.
+
 ## Features
 
 | Feature | How to access |
@@ -14,12 +16,21 @@ VS Code extension for [reqstool](https://reqstool.github.io), providing full Lan
 | Refresh | Command Palette → **reqstool: Refresh** |
 | YAML snippets | Type `Requirement`, `SVC`, or `MVR` in a YAML file |
 
+<!-- Screenshots: add images to the images/ directory and uncomment below -->
+<!--
+![Hover tooltip showing requirement details](images/hover.png)
+![Outline view listing requirements](images/outline.png)
+![Inline diagnostics in the Problems panel](images/diagnostics.png)
+-->
+
 ## Getting Started
 
 1. Install the extension from the VS Code Marketplace or Open VSX Registry.
 2. Open a workspace that contains a `requirements.yml` file.
 
 reqstool is installed automatically into a managed virtual environment on first activation. No manual setup required.
+
+> **Note:** Auto-install requires Python (`python3` or `python`) to be available on your `PATH`. If Python is not available, install reqstool manually and configure `reqstool.serverCommand`.
 
 ## Configuration
 
@@ -82,6 +93,11 @@ The LSP server provides hover, completion, go-to-definition, and diagnostics for
 - JavaScript / TypeScript
 - JSX / TSX
 - YAML (requirements, SVCs, MVRs)
+
+## Requirements
+
+- VS Code 1.109.0 or later
+- Python (`python3` or `python`) on your `PATH` for auto-install — or configure `reqstool.serverCommand` to point to an existing installation
 
 ## Troubleshooting
 

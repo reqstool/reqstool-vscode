@@ -1,10 +1,11 @@
 {
     "name": "reqstool",
     "displayName": "reqstool",
-    "description": "Provides reqstool LSP-based support",
+    "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
     "version": "0.1.0",
     "publisher": "reqstool",
     "author": "reqstool",
+    "icon": "images/icon.png",
     "repository": {
         "type": "git",
         "url": "https://github.com/reqstool/reqstool-vscode"
@@ -13,7 +14,9 @@
         "vscode": "^1.109.0"
     },
     "categories": [
-        "Other"
+        "Programming Languages",
+        "Linters",
+        "Snippets"
     ],
     "activationEvents": [
         "workspaceContains:**/requirements.yml",
