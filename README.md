@@ -14,42 +14,64 @@ VS Code extension for [reqstool](https://reqstool.github.io), providing full Lan
 | Refresh | Command Palette → **reqstool: Refresh** |
 | YAML snippets | Type `Requirement`, `SVC`, or `MVR` in a YAML file |
 
-## Requirements
-
-reqstool must be installed and available on your `PATH`:
-
-```bash
-pipx install "reqstool[lsp]"
-```
-
-Verify the installation:
-
-```bash
-reqstool --version
-```
-
 ## Getting Started
 
 1. Install the extension from the VS Code Marketplace or Open VSX Registry.
-2. Install reqstool: `pipx install "reqstool[lsp]"`
-3. Open a workspace that contains a `requirements.yml` file — the extension activates automatically.
+2. Open a workspace that contains a `requirements.yml` file.
+
+reqstool is installed automatically into a managed virtual environment on first activation. No manual setup required.
 
 ## Configuration
 
 | Setting | Default | Description |
 |---|---|---|
-| `reqstool.serverPath` | `""` | Path to the `reqstool` executable. Leave empty to use the system `PATH`. |
+| `reqstool.serverCommand` | `["reqstool", "lsp"]` | Command to start the reqstool LSP server. See [Custom server command](#custom-server-command). |
 | `reqstool.trace.server` | `"off"` | LSP communication tracing. Set to `"messages"` or `"verbose"` to debug. |
+| `reqstool.startupTimeout` | `5000` | Milliseconds to wait when checking if reqstool is available. |
+| `reqstool.symbolLookupDelay` | `500` | Milliseconds to wait after opening a file before querying document symbols. |
+| `reqstool.fileWatchPattern` | `**/{requirements,...}.yml` | Glob pattern for reqstool YAML files to watch for changes. |
+| `reqstool.languages` | all supported | Language IDs for which the LSP client is active (checkbox list in Settings UI). |
 
-### Using a custom reqstool path
+### Custom server command
 
-If `reqstool` is not on your `PATH`, set the full path in your workspace or user settings:
+By default the extension auto-installs reqstool and manages the server for you. If you want to use a specific installation, set `reqstool.serverCommand` in your user or workspace settings:
 
+**Use a specific binary on PATH:**
 ```json
 {
-    "reqstool.serverPath": "/home/user/.local/bin/reqstool"
+    "reqstool.serverCommand": ["reqstool", "lsp"]
 }
 ```
+
+**Use an absolute path:**
+```json
+{
+    "reqstool.serverCommand": ["/home/user/.local/bin/reqstool", "lsp"]
+}
+```
+
+**Use a specific virtual environment:**
+```json
+{
+    "reqstool.serverCommand": ["/home/user/.venv/bin/reqstool", "lsp"]
+}
+```
+
+**Use a specific Python interpreter:**
+```json
+{
+    "reqstool.serverCommand": ["python", "-m", "reqstool", "lsp"]
+}
+```
+
+**Enable debug logging:**
+```json
+{
+    "reqstool.serverCommand": ["reqstool", "lsp", "--log-level", "debug"]
+}
+```
+
+When `reqstool.serverCommand` is set, the managed virtual environment is bypassed entirely.
 
 ## Supported Languages
 
@@ -65,9 +87,9 @@ The LSP server provides hover, completion, go-to-definition, and diagnostics for
 
 **Extension shows "reqstool is not installed or not found"**
 
-- Run `reqstool --version` in a terminal to confirm it is installed and on `PATH`.
-- If installed via pipx, ensure the pipx bin directory (`~/.local/bin`) is on your `PATH`.
-- Set `reqstool.serverPath` to the absolute path of the executable.
+- The auto-install requires Python (`python3` or `python`) to be available on your `PATH`.
+- If Python is not found, install reqstool manually and set `reqstool.serverCommand`.
+- Run `reqstool --version` in a terminal to confirm a manual installation is working.
 
 **Enable LSP tracing**
 
