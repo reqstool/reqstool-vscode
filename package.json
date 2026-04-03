@@ -25,7 +25,8 @@
     ],
     "main": "./out/extension.js",
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "npm run bundle",
+        "bundle": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
@@ -39,13 +40,24 @@
     "contributes": {
         "viewsContainers": {
             "activitybar": [
-                { "id": "reqstool", "title": "reqstool", "icon": "media/reqstool.svg" }
+                {
+                    "id": "reqstool",
+                    "title": "reqstool",
+                    "icon": "media/reqstool.svg"
+                }
             ]
         },
         "views": {
             "reqstool": [
-                { "id": "reqstool.outlineView", "name": "Outline" },
-                { "type": "webview", "id": "reqstool.detailsView", "name": "Details" }
+                {
+                    "id": "reqstool.outlineView",
+                    "name": "Outline"
+                },
+                {
+                    "type": "webview",
+                    "id": "reqstool.detailsView",
+                    "name": "Details"
+                }
             ]
         },
         "viewsWelcome": [
@@ -77,9 +89,18 @@
         ],
         "menus": {
             "commandPalette": [
-                { "command": "reqstool.openDetails", "when": "false" },
-                { "command": "reqstool.outline.scopeProject", "when": "false" },
-                { "command": "reqstool.outline.scopeFile", "when": "false" }
+                {
+                    "command": "reqstool.openDetails",
+                    "when": "false"
+                },
+                {
+                    "command": "reqstool.outline.scopeProject",
+                    "when": "false"
+                },
+                {
+                    "command": "reqstool.outline.scopeFile",
+                    "when": "false"
+                }
             ],
             "view/title": [
                 {
@@ -99,8 +120,13 @@
             "properties": {
                 "reqstool.serverCommand": {
                     "type": "array",
-                    "items": { "type": "string" },
-                    "default": ["reqstool", "lsp"],
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "reqstool",
+                        "lsp"
+                    ],
                     "description": "Command to start the reqstool LSP server. First element is the executable, rest are arguments. Examples: [\"reqstool\", \"lsp\"], [\"python\", \"-m\", \"reqstool.lsp\", \"lsp\"], [\"pipx\", \"run\", \"reqstool\", \"lsp\", \"--log-level\", \"debug\"]."
                 },
                 "reqstool.trace.server": {
@@ -134,10 +160,26 @@
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "enum": ["python", "java", "javascript", "typescript", "javascriptreact", "typescriptreact", "yaml"]
+                        "enum": [
+                            "python",
+                            "java",
+                            "javascript",
+                            "typescript",
+                            "javascriptreact",
+                            "typescriptreact",
+                            "yaml"
+                        ]
                     },
                     "uniqueItems": true,
-                    "default": ["python", "java", "javascript", "typescript", "javascriptreact", "typescriptreact", "yaml"],
+                    "default": [
+                        "python",
+                        "java",
+                        "javascript",
+                        "typescript",
+                        "javascriptreact",
+                        "typescriptreact",
+                        "yaml"
+                    ],
                     "description": "Language IDs for which the reqstool LSP client is active."
                 }
             }
@@ -155,6 +197,7 @@
         "@vscode/test-cli": "0.0.12",
         "@vscode/test-electron": "2.5.2",
         "@vscode/vsce": "3.7.1",
+        "esbuild": "^0.28.0",
         "eslint": "10.0.3",
         "mocha-junit-reporter": "2.2.1",
         "rimraf": "6.1.3",
