@@ -1,0 +1,208 @@
+{
+    "name": "reqstool",
+    "displayName": "reqstool",
+    "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
+    "version": "0.1.0",
+    "publisher": "reqstool",
+    "author": "reqstool",
+    "icon": "images/icon.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/reqstool/reqstool-vscode"
+    },
+    "engines": {
+        "vscode": "^1.109.0"
+    },
+    "categories": [
+        "Linters",
+        "Snippets",
+        "Other",
+        "Testing"
+    ],
+    "activationEvents": [
+        "workspaceContains:**/requirements.yml",
+        "onView:reqstool.detailsView",
+        "onView:reqstool.outlineView"
+    ],
+    "main": "./out/extension.js",
+    "scripts": {
+        "vscode:prepublish": "npm run bundle",
+        "bundle": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src",
+        "test": "vscode-test",
+        "test-with-report": "vscode-test",
+        "test:ui": "extest setup-and-run './out/test/ui/*.test.js' --open_resource src/test/fixtures/test.code-workspace",
+        "clean": "rimraf out",
+        "build": "rimraf out && vsce package"
+    },
+    "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "reqstool",
+                    "title": "reqstool",
+                    "icon": "media/reqstool.svg"
+                }
+            ]
+        },
+        "views": {
+            "reqstool": [
+                {
+                    "id": "reqstool.outlineView",
+                    "name": "Outline"
+                },
+                {
+                    "type": "webview",
+                    "id": "reqstool.detailsView",
+                    "name": "Details"
+                }
+            ]
+        },
+        "viewsWelcome": [
+            {
+                "view": "reqstool.detailsView",
+                "contents": "No item selected.\n\nHover over a requirement, SVC, or MVR ID and click **Open Details**."
+            }
+        ],
+        "commands": [
+            {
+                "command": "reqstool.refresh",
+                "title": "reqstool: Refresh",
+                "category": "reqstool"
+            },
+            {
+                "command": "reqstool.openDetails",
+                "title": "reqstool: Open Details"
+            },
+            {
+                "command": "reqstool.outline.scopeProject",
+                "title": "Show whole project",
+                "icon": "$(folder)"
+            },
+            {
+                "command": "reqstool.outline.scopeFile",
+                "title": "Show current file",
+                "icon": "$(file-code)"
+            }
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "reqstool.openDetails",
+                    "when": "false"
+                },
+                {
+                    "command": "reqstool.outline.scopeProject",
+                    "when": "false"
+                },
+                {
+                    "command": "reqstool.outline.scopeFile",
+                    "when": "false"
+                }
+            ],
+            "view/title": [
+                {
+                    "command": "reqstool.outline.scopeProject",
+                    "when": "view == reqstool.outlineView && reqstool.outlineScope == 'file'",
+                    "group": "navigation"
+                },
+                {
+                    "command": "reqstool.outline.scopeFile",
+                    "when": "view == reqstool.outlineView && reqstool.outlineScope == 'project'",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "reqstool",
+            "properties": {
+                "reqstool.serverCommand": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "reqstool",
+                        "lsp"
+                    ],
+                    "description": "Command to start the reqstool LSP server. First element is the executable, rest are arguments. Examples: [\"reqstool\", \"lsp\"], [\"python\", \"-m\", \"reqstool.lsp\", \"lsp\"], [\"pipx\", \"run\", \"reqstool\", \"lsp\", \"--log-level\", \"debug\"]."
+                },
+                "reqstool.trace.server": {
+                    "type": "string",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Trace LSP communication."
+                },
+                "reqstool.startupTimeout": {
+                    "type": "number",
+                    "default": 5000,
+                    "minimum": 1000,
+                    "description": "Milliseconds to wait when checking if reqstool is installed."
+                },
+                "reqstool.symbolLookupDelay": {
+                    "type": "number",
+                    "default": 500,
+                    "minimum": 0,
+                    "description": "Milliseconds to wait after opening a file before querying document symbols."
+                },
+                "reqstool.fileWatchPattern": {
+                    "type": "string",
+                    "default": "**/{requirements,software_verification_cases,manual_verification_results,reqstool_config}.yml",
+                    "description": "Glob pattern for reqstool YAML files to watch for changes."
+                },
+                "reqstool.languages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "python",
+                            "java",
+                            "javascript",
+                            "typescript",
+                            "javascriptreact",
+                            "typescriptreact",
+                            "yaml"
+                        ]
+                    },
+                    "uniqueItems": true,
+                    "default": [
+                        "python",
+                        "java",
+                        "javascript",
+                        "typescript",
+                        "javascriptreact",
+                        "typescriptreact",
+                        "yaml"
+                    ],
+                    "description": "Language IDs for which the reqstool LSP client is active."
+                }
+            }
+        }
+    },
+    "dependencies": {
+        "vscode-languageclient": "9.0.1"
+    },
+    "devDependencies": {
+        "@types/mocha": "10.0.10",
+        "@types/node": "25.3.5",
+        "@types/vscode": "1.109.0",
+        "@typescript-eslint/eslint-plugin": "8.56.1",
+        "@typescript-eslint/parser": "8.56.1",
+        "@vscode/test-cli": "0.0.12",
+        "@vscode/test-electron": "2.5.2",
+        "@vscode/vsce": "3.7.1",
+        "esbuild": "^0.28.0",
+        "eslint": "10.0.3",
+        "mocha-junit-reporter": "2.2.1",
+        "rimraf": "6.1.3",
+        "typescript": "5.9.3",
+        "vscode-extension-tester": "8.22.1"
+    }
+}

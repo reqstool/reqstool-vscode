@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reqstool/reqstool-client/main/src/reqstool/resources/schemas/v1/requirements.schema.json
+---
+system_name: Test System
+id: TEST-SYS-001
+title: Test requirements fixture
+requirements: []
