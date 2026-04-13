@@ -2,7 +2,19 @@ name: Build VS Code extension
 
 on:
   workflow_call:
+    inputs:
+      reqstool_version:
+        description: 'reqstool version to install (empty = latest)'
+        required: false
+        default: ''
+        type: string
   workflow_dispatch:
+    inputs:
+      reqstool_version:
+        description: 'reqstool version to install (empty = latest)'
+        required: false
+        default: ''
+        type: string
   push:
     branches:
       - main
@@ -31,7 +43,13 @@ jobs:
         run: npm ci
 
       - name: Install reqstool
-        run: pipx install reqstool
+        run: |
+          VERSION="${{ inputs.reqstool_version }}"
+          if [ -n "$VERSION" ]; then
+            pipx install "reqstool==$VERSION"
+          else
+            pipx install reqstool
+          fi
 
       - name: Run headless test
         run: xvfb-run --auto-servernum npm run test-with-report
