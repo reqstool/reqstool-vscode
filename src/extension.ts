@@ -152,7 +152,9 @@ async function ensureManagedVenv(context: vscode.ExtensionContext): Promise<stri
                             execFile(cmd, args, { timeout: 120000 }, err => err ? rej(err) : res()))
                     await run(python, ['-m', 'venv', envDir])
                     const pip = path.join(envDir, bin, process.platform === 'win32' ? 'pip.exe' : 'pip')
-                    await run(pip, ['install', 'reqstool'])
+                    const reqstoolVersion = context.extension.packageJSON.reqstoolVersion as string | undefined
+                    const packageSpec = reqstoolVersion ? `reqstool==${reqstoolVersion}` : 'reqstool'
+                    await run(pip, ['install', packageSpec])
                 }
             )
             await context.globalState.update('envVersion', currentVersion)

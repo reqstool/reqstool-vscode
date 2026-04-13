@@ -3,6 +3,7 @@
     "displayName": "reqstool",
     "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
     "version": "0.1.0",
+    "reqstoolVersion": "",
     "publisher": "reqstool",
     "author": "reqstool",
     "icon": "images/icon.png",

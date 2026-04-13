@@ -3,6 +3,16 @@ name: Publish to Open VSX Registry and Visual Studio Marketplace
 on:
   release:
     types: [created]
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      reqstool_version:
+        description: 'reqstool version to pin in extension (empty = latest)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   check-release:
@@ -12,12 +22,13 @@ jobs:
   build:
     name: Reuse build
     uses: ./.github/workflows/build.yml
+    with:
+      reqstool_version: ${{ inputs.reqstool_version || '' }}
 
-  publish-vscode-extension:
-    needs:
-      - build
-      - check-release
-
+  dry-run:
+    name: Dry-run publish
+    # runs on push to main and workflow_dispatch; skipped for real releases
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -25,12 +36,44 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
+      - name: Pin reqstool version
+        if: ${{ inputs.reqstool_version != '' }}
+        run: npm pkg set reqstoolVersion="${{ inputs.reqstool_version }}"
+      - name: Dry-run publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
+        with:
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
+          dryRun: true
+      - name: Dry-run publish to Visual Studio Marketplace
+        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
+        with:
+          pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+          registryUrl: https://marketplace.visualstudio.com
+          dryRun: true
+
+  publish-vscode-extension:
+    name: Publish extension
+    # only runs on real releases
+    if: github.event_name == 'release'
+    needs:
+      - build
+      - check-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm ci
+      - name: Pin reqstool version
+        if: ${{ inputs.reqstool_version != '' }}
+        run: npm pkg set reqstoolVersion="${{ inputs.reqstool_version }}"
       - name: Publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@v2
+        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
       - name: Publish to Visual Studio Marketplace
-        uses: HaaLeo/publish-vscode-extension@v2
+        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
