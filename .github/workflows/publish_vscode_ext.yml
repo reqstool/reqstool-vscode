@@ -17,6 +17,7 @@ on:
 jobs:
   check-release:
     name: Reuse check release
+    if: github.event_name == 'release'
     uses: ./.github/workflows/check_release.yml
 
   build:
@@ -26,9 +27,13 @@ jobs:
       reqstool_version: ${{ inputs.reqstool_version || '' }}
 
   dry-run:
-    name: Dry-run publish
-    # runs on push to main and workflow_dispatch; skipped for real releases
+    # Validates packaging and PAT token without uploading.
+    # Runs independently of build — manifest validation does not require tests to pass.
+    # Skips the publish step when VS_MARKETPLACE_TOKEN is not yet configured.
+    name: Dry-run publish (skipped if token absent)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    env:
+      VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -39,12 +44,17 @@ jobs:
       - name: Pin reqstool version
         if: ${{ inputs.reqstool_version != '' }}
         run: npm pkg set reqstoolVersion="${{ inputs.reqstool_version }}"
-      - name: Dry-run publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
-        with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          dryRun: true
+      - name: Log effective reqstool version
+        run: |
+          VERSION=$(node -p "require('./package.json').reqstoolVersion || '(latest)'")
+          echo "reqstoolVersion: $VERSION"
+      # - name: Dry-run publish to Open VSX Registry
+      #   uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
+      #   with:
+      #     pat: ${{ secrets.OPEN_VSX_TOKEN }}
+      #     dryRun: true
       - name: Dry-run publish to Visual Studio Marketplace
+        if: env.VS_MARKETPLACE_TOKEN != ''
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
@@ -66,12 +76,19 @@ jobs:
           node-version: 24
       - run: npm ci
       - name: Pin reqstool version
+        # Note: reqstool_version input is only available via workflow_dispatch.
+        # On release events (no manual inputs), this step is skipped and the
+        # published extension installs the latest reqstool at runtime.
         if: ${{ inputs.reqstool_version != '' }}
         run: npm pkg set reqstoolVersion="${{ inputs.reqstool_version }}"
-      - name: Publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
-        with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
+      - name: Log effective reqstool version
+        run: |
+          VERSION=$(node -p "require('./package.json').reqstoolVersion || '(latest)'")
+          echo "reqstoolVersion: $VERSION"
+      # - name: Publish to Open VSX Registry
+      #   uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
+      #   with:
+      #     pat: ${{ secrets.OPEN_VSX_TOKEN }}
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
