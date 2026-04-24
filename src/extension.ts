@@ -11,16 +11,43 @@ let client: LanguageClient | undefined
 
 export async function activate(context: vscode.ExtensionContext) {
     const cfg = vscode.workspace.getConfiguration('reqstool')
+    const timeout = cfg.get<number>('startupTimeout', 5000)
+    const bundledVersion = (context.extension.packageJSON.reqstoolVersion as string | undefined)?.trim() || undefined
 
-    // Use managed venv unless user has explicitly configured serverCommand
-    const insp = cfg.inspect<string[]>('serverCommand')
-    const isUserConfigured = !!(insp?.globalValue || insp?.workspaceValue || insp?.workspaceFolderValue)
-    const managedBin = isUserConfigured ? undefined : await ensureManagedVenv(context)
+    // If user explicitly configured serverCommand, skip all source-selection logic
+    const cmdInsp = cfg.inspect<string[]>('serverCommand')
+    const isCommandConfigured = !!(cmdInsp?.globalValue || cmdInsp?.workspaceValue || cmdInsp?.workspaceFolderValue)
 
-    const [executable, serverArgs] = resolveServerCommand(managedBin)
+    let systemVersion: string | undefined
+    let managedBin: string | undefined
+
+    if (!isCommandConfigured) {
+        systemVersion = await getInstalledVersion('reqstool', timeout)
+
+        // Show source picker on first activation (serverSource never explicitly chosen)
+        const sourceInsp = cfg.inspect<string>('serverSource')
+        const neverChosen = !sourceInsp?.globalValue && !sourceInsp?.workspaceValue && !sourceInsp?.workspaceFolderValue
+        if (neverChosen) {
+            const managedBinPath = getManagedBinPath(context)
+            const managedBinVersion = fs.existsSync(managedBinPath)
+                ? await getInstalledVersion(managedBinPath, timeout)
+                : undefined
+            await showServerSourcePicker(systemVersion, managedBinVersion, bundledVersion)
+        }
+
+        const source = cfg.get<string>('serverSource', 'auto')
+        if (source === 'managed') {
+            managedBin = await ensureManagedVenv(context)
+        } else if (source === 'auto' && !systemVersion) {
+            managedBin = await ensureManagedVenv(context)
+        }
+        // source === 'system', or 'auto' with system available → managedBin stays undefined → PATH fallback
+    }
+
+    const [executable, serverArgs] = resolveServerCommand(isCommandConfigured, managedBin)
 
     // Guard: inform user if reqstool is not installed
-    if (!await checkServerInstalled(executable, cfg.get<number>('startupTimeout', 5000))) {
+    if (!await checkServerInstalled(executable, timeout)) {
         const action = await vscode.window.showErrorMessage(
             'reqstool is not installed or not found. Install: pipx install "reqstool"',
             'Open Docs'
@@ -29,6 +56,19 @@ export async function activate(context: vscode.ExtensionContext) {
             vscode.env.openExternal(vscode.Uri.parse('https://reqstool.github.io'))
         }
         return
+    }
+
+    // Warn if system reqstool is older than the version bundled with this extension
+    if (!isCommandConfigured && bundledVersion && systemVersion && semverLt(systemVersion, bundledVersion)) {
+        vscode.window.showWarningMessage(
+            `System reqstool v${systemVersion} is older than the version bundled with this extension (v${bundledVersion}). ` +
+            `Consider upgrading: pipx upgrade reqstool`,
+            'Change Source', 'Dismiss'
+        ).then(action => {
+            if (action === 'Change Source') {
+                vscode.commands.executeCommand('reqstool.selectServerSource')
+            }
+        })
     }
 
     const serverOptions: ServerOptions = {
@@ -112,6 +152,21 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     )
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand('reqstool.selectServerSource', async () => {
+            const sysVer = await getInstalledVersion('reqstool', timeout)
+            const managedBinPath = getManagedBinPath(context)
+            const mgrVer = fs.existsSync(managedBinPath)
+                ? await getInstalledVersion(managedBinPath, timeout)
+                : undefined
+            await showServerSourcePicker(sysVer, mgrVer, bundledVersion)
+            vscode.window.showInformationMessage(
+                'reqstool server source updated. Reload window to apply.',
+                'Reload'
+            ).then(a => { if (a === 'Reload') vscode.commands.executeCommand('workbench.action.reloadWindow') })
+        })
+    )
+
     const { registerSnippets } = await import('./snippets.js')
     context.subscriptions.push(registerSnippets())
 
@@ -125,11 +180,62 @@ export async function deactivate(): Promise<void> {
     }
 }
 
-async function ensureManagedVenv(context: vscode.ExtensionContext): Promise<string | undefined> {
+async function showServerSourcePicker(
+    systemVersion: string | undefined,
+    managedBinVersion: string | undefined,
+    bundledVersion: string | undefined,
+): Promise<void> {
+    const fallbackVersion = bundledVersion ?? managedBinVersion
+
+    const items: vscode.QuickPickItem[] = [
+        {
+            label: 'Auto',
+            description: '(Recommended)',
+            detail: 'Use system reqstool if installed; otherwise fall back to the version packaged with this extension.',
+        },
+        {
+            label: 'System installed',
+            description: systemVersion ? `v${systemVersion}` : 'not found',
+            detail: systemVersion
+                ? 'Use the reqstool found on PATH.'
+                : 'reqstool was not found on PATH. Install with: pipx install reqstool',
+        },
+        {
+            label: 'Packaged with extension',
+            description: fallbackVersion ? `v${fallbackVersion}` : 'unknown',
+            detail: 'Use the reqstool version bundled and managed by this extension.',
+        },
+    ]
+
+    const picked = await vscode.window.showQuickPick(items, {
+        title: 'reqstool: Select Server Source',
+        placeHolder: 'Choose which reqstool binary the extension uses',
+    })
+
+    if (!picked) { return }
+
+    const valueMap: Record<string, string> = {
+        'Auto': 'auto',
+        'System installed': 'system',
+        'Packaged with extension': 'managed',
+    }
+    const value = valueMap[picked.label]
+    if (value) {
+        await vscode.workspace.getConfiguration('reqstool')
+            .update('serverSource', value, vscode.ConfigurationTarget.Global)
+    }
+}
+
+function getManagedBinPath(context: vscode.ExtensionContext): string {
     const envDir = path.join(context.globalStorageUri.fsPath, 'env')
     const bin = process.platform === 'win32' ? 'Scripts' : 'bin'
     const exe = process.platform === 'win32' ? 'reqstool.exe' : 'reqstool'
-    const reqstoolBin = path.join(envDir, bin, exe)
+    return path.join(envDir, bin, exe)
+}
+
+async function ensureManagedVenv(context: vscode.ExtensionContext): Promise<string | undefined> {
+    const envDir = path.join(context.globalStorageUri.fsPath, 'env')
+    const reqstoolBin = getManagedBinPath(context)
 
     // Invalidate venv on extension version upgrade
     const storedVersion = context.globalState.get<string>('envVersion')
@@ -150,6 +256,7 @@ async function ensureManagedVenv(context: vscode.ExtensionContext): Promise<stri
                     const run = (cmd: string, args: string[]) =>
                         new Promise<void>((res, rej) =>
                             execFile(cmd, args, { timeout: 120000 }, err => err ? rej(err) : res()))
+                    const bin = process.platform === 'win32' ? 'Scripts' : 'bin'
                     await run(python, ['-m', 'venv', envDir])
                     const pip = path.join(envDir, bin, process.platform === 'win32' ? 'pip.exe' : 'pip')
                     const reqstoolVersion = context.extension.packageJSON.reqstoolVersion as string | undefined
@@ -176,26 +283,40 @@ async function findPython(): Promise<string | undefined> {
     return undefined
 }
 
-function resolveServerCommand(managedBin?: string): [string, string[]] {
+function resolveServerCommand(isCommandConfigured: boolean, managedBin?: string): [string, string[]] {
     const cfg = vscode.workspace.getConfiguration('reqstool')
 
-    // If user explicitly configured serverCommand, always use it
-    const insp = cfg.inspect<string[]>('serverCommand')
-    const isUserConfigured = !!(insp?.globalValue || insp?.workspaceValue || insp?.workspaceFolderValue)
-    if (isUserConfigured) {
+    if (isCommandConfigured) {
         const cmd = cfg.get<string[]>('serverCommand', ['reqstool', 'lsp']).filter(s => s.trim().length > 0)
         const [command, ...args] = cmd.length > 0 ? cmd : ['reqstool', 'lsp']
         return [command, args]
     }
 
-    // Use managed venv if available
     if (managedBin) { return [managedBin, ['lsp']] }
 
-    // PATH fallback
     return ['reqstool', ['lsp']]
 }
 
-async function checkServerInstalled(executable: string, timeout: number): Promise<boolean> {
+async function getInstalledVersion(executable: string, timeout: number): Promise<string | undefined> {
     const { execFile } = await import('node:child_process')
-    return new Promise(resolve => execFile(executable, ['--version'], { timeout }, err => resolve(!err)))
+    return new Promise(resolve =>
+        execFile(executable, ['--version'], { timeout }, (err, stdout) => {
+            if (err) { resolve(undefined); return }
+            const match = stdout.trim().match(/(\d+\.\d+\.\d+)/)
+            resolve(match ? match[1] : undefined)
+        }))
+}
+
+async function checkServerInstalled(executable: string, timeout: number): Promise<boolean> {
+    return (await getInstalledVersion(executable, timeout)) !== undefined
+}
+
+function semverLt(a: string, b: string): boolean {
+    const pa = a.split('.').map(Number)
+    const pb = b.split('.').map(Number)
+    for (let i = 0; i < 3; i++) {
+        if ((pa[i] ?? 0) < (pb[i] ?? 0)) { return true }
+        if ((pa[i] ?? 0) > (pb[i] ?? 0)) { return false }
+    }
+    return false
 }
