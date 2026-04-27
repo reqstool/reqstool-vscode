@@ -106,7 +106,15 @@ export async function activate(context: vscode.ExtensionContext) {
                     }
                 }
                 return hover
-            }
+            },
+            // Guard against the server returning symbols with empty names, which VS Code rejects
+            provideDocumentSymbols: async (document, token, next) => {
+                try {
+                    return await next(document, token)
+                } catch {
+                    return []
+                }
+            },
         },
     }
 
