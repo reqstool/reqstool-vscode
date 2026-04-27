@@ -3,7 +3,7 @@
     "displayName": "reqstool",
     "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
     "version": "0.1.0",
-    "reqstoolVersion": "",
+    "reqstoolVersion": "0.8.0",
     "publisher": "reqstool",
     "author": "reqstool",
     "icon": "images/icon.png",
@@ -79,6 +79,11 @@
                 "title": "reqstool: Open Details"
             },
             {
+                "command": "reqstool.selectServerSource",
+                "title": "reqstool: Select Server Source",
+                "category": "reqstool"
+            },
+            {
                 "command": "reqstool.outline.scopeProject",
                 "title": "Show whole project",
                 "icon": "$(folder)"
@@ -120,6 +125,21 @@
         "configuration": {
             "title": "reqstool",
             "properties": {
+                "reqstool.serverSource": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "system",
+                        "managed"
+                    ],
+                    "enumDescriptions": [
+                        "Use system reqstool if installed, otherwise fall back to the version packaged with this extension.",
+                        "Always use the reqstool found on PATH.",
+                        "Always use the reqstool version packaged with this extension."
+                    ],
+                    "default": "auto",
+                    "description": "Which reqstool binary the extension uses to run the LSP server. Run 'reqstool: Select Server Source' to pick interactively."
+                },
                 "reqstool.serverCommand": {
                     "type": "array",
                     "items": {

@@ -15,6 +15,7 @@ reqstool links requirements, software verification cases, and manual verificatio
 | Diagnostics | Problems panel (`Ctrl+Shift+M`) |
 | Refresh | Command Palette → **reqstool: Refresh** |
 | YAML snippets | Type `Requirement`, `SVC`, or `MVR` in a YAML file |
+| Select server source | Command Palette → **reqstool: Select Server Source** |
 
 <!-- Screenshots: add images to the images/ directory and uncomment below -->
 <!--
@@ -27,16 +28,24 @@ reqstool links requirements, software verification cases, and manual verificatio
 
 1. Install the extension from the VS Code Marketplace or Open VSX Registry.
 2. Open a workspace that contains a `requirements.yml` file.
+3. On first activation a picker appears — choose which reqstool to use:
 
-reqstool is installed automatically into a managed virtual environment on first activation. No manual setup required.
+| Option | Description |
+|---|---|
+| **Auto** *(default)* | Use system reqstool if installed; otherwise fall back to the version packaged with this extension. |
+| **System installed** | Always use the `reqstool` found on PATH (version shown). |
+| **Packaged with extension** | Always use the version bundled and managed by this extension (version shown). |
 
-> **Note:** Auto-install requires Python (`python3` or `python`) to be available on your `PATH`. If Python is not available, install reqstool manually and configure `reqstool.serverCommand`.
+Your choice is saved globally and will not be asked again. To change it later, run **reqstool: Select Server Source** from the Command Palette.
+
+> **Note:** The packaged option requires Python (`python3` or `python`) on your `PATH` for the one-time install. If Python is not available and reqstool is not on PATH, install reqstool manually (`pipx install reqstool`) and restart VS Code.
 
 ## Configuration
 
 | Setting | Default | Description |
 |---|---|---|
-| `reqstool.serverCommand` | `["reqstool", "lsp"]` | Command to start the reqstool LSP server. See [Custom server command](#custom-server-command). |
+| `reqstool.serverSource` | `"auto"` | Which reqstool to use: `auto` (system if available, otherwise managed), `system` (PATH), `managed` (bundled). Use **reqstool: Select Server Source** to pick interactively. |
+| `reqstool.serverCommand` | — | Override the full server command (array). Takes priority over `serverSource`. See [Custom server command](#custom-server-command). |
 | `reqstool.trace.server` | `"off"` | LSP communication tracing. Set to `"messages"` or `"verbose"` to debug. |
 | `reqstool.startupTimeout` | `5000` | Milliseconds to wait when checking if reqstool is available. |
 | `reqstool.symbolLookupDelay` | `500` | Milliseconds to wait after opening a file before querying document symbols. |
@@ -45,7 +54,7 @@ reqstool is installed automatically into a managed virtual environment on first 
 
 ### Custom server command
 
-By default the extension auto-installs reqstool and manages the server for you. If you want to use a specific installation, set `reqstool.serverCommand` in your user or workspace settings:
+For most users, `reqstool.serverSource` is sufficient. `reqstool.serverCommand` is for advanced cases where you need full control over the command and arguments — it takes priority over `serverSource` when set.
 
 **Use a specific binary on PATH:**
 ```json
@@ -82,7 +91,7 @@ By default the extension auto-installs reqstool and manages the server for you. 
 }
 ```
 
-When `reqstool.serverCommand` is set, the managed virtual environment is bypassed entirely.
+When `reqstool.serverCommand` is set, both `reqstool.serverSource` and the managed virtual environment are bypassed entirely.
 
 ## Supported Languages
 
@@ -103,9 +112,14 @@ The LSP server provides hover, completion, go-to-definition, and diagnostics for
 
 **Extension shows "reqstool is not installed or not found"**
 
-- The auto-install requires Python (`python3` or `python`) to be available on your `PATH`.
-- If Python is not found, install reqstool manually and set `reqstool.serverCommand`.
+- Run **reqstool: Select Server Source** and choose **Packaged with extension** to let the extension install reqstool automatically (requires Python on PATH), or **System installed** if you have reqstool on PATH.
+- To install manually: `pipx install reqstool`, then restart VS Code.
 - Run `reqstool --version` in a terminal to confirm a manual installation is working.
+
+**Extension warns that the system reqstool is too old**
+
+- The extension requires reqstool 0.8.0 or later.
+- Upgrade with `pipx upgrade reqstool`, or run **reqstool: Select Server Source** and choose **Packaged with extension** to use the bundled version instead.
 
 **Enable LSP tracing**
 
