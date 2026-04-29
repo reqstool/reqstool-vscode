@@ -6,7 +6,7 @@ import * as vscode from 'vscode'
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 import { DetailsViewProvider } from './details.js'
 import { OutlineProvider } from './outline.js'
-import { StatusViewProvider } from './status.js'
+import { StatusPanel } from './status.js'
 
 let client: LanguageClient | undefined
 
@@ -103,16 +103,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
     logServerInfo(outputChannel, activeVersion, activeSource, executable)
 
-    const statusViewProvider = new StatusViewProvider()
-    statusViewProvider.setServerInfo(activeVersion, activeSource)
+    const statusPanel = new StatusPanel(context)
+    statusPanel.setServerInfo(activeVersion, activeSource)
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(StatusViewProvider.viewId, statusViewProvider, {
-            webviewOptions: { retainContextWhenHidden: true }
-        })
+        vscode.commands.registerCommand('reqstool.toggleStatus', () => statusPanel.toggle())
     )
 
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
-    statusBar.command = 'reqstool.statusView.focus'
+    statusBar.command = 'reqstool.toggleStatus'
     statusBar.tooltip = 'reqstool status'
     statusBar.text = 'reqstool'
     statusBar.show()
@@ -211,7 +209,7 @@ export async function activate(context: vscode.ExtensionContext) {
             const pickedVer = await getInstalledVersion(pickedExe, timeout)
             const pickedSourceLabel: ServerSource = newSource === 'managed' ? 'managed' : 'system'
             logServerInfo(outputChannel, pickedVer, pickedSourceLabel, pickedExe)
-            statusViewProvider.setServerInfo(pickedVer, pickedSourceLabel)
+            statusPanel.setServerInfo(pickedVer, pickedSourceLabel)
 
             vscode.window.showInformationMessage(
                 'reqstool server source updated. Reload window to apply.',
@@ -225,7 +223,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     await client.start()
     context.subscriptions.push(client)
-    statusViewProvider.setClient(client)
+    statusPanel.setClient(client)
 }
 
 export async function deactivate(): Promise<void> {

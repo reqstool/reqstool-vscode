@@ -2,7 +2,7 @@
     "name": "reqstool",
     "displayName": "reqstool",
     "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "reqstoolVersion": "0.8.0",
     "publisher": "reqstool",
     "author": "reqstool",
@@ -60,13 +60,6 @@
                     "id": "reqstool.detailsView",
                     "name": "Details"
                 }
-            ],
-            "panel": [
-                {
-                    "type": "webview",
-                    "id": "reqstool.statusView",
-                    "name": "reqstool"
-                }
             ]
         },
         "viewsWelcome": [
@@ -88,6 +81,11 @@
             {
                 "command": "reqstool.selectServerSource",
                 "title": "reqstool: Select Server Source",
+                "category": "reqstool"
+            },
+            {
+                "command": "reqstool.toggleStatus",
+                "title": "reqstool: Toggle Status",
                 "category": "reqstool"
             },
             {
