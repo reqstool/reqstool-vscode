@@ -9,6 +9,18 @@ import { OutlineProvider } from './outline.js'
 
 let client: LanguageClient | undefined
 
+type ServerSource = 'system' | 'managed' | 'configured'
+
+function logServerInfo(
+    channel: vscode.OutputChannel,
+    version: string | undefined,
+    source: ServerSource,
+    executablePath: string,
+): void {
+    const ts = new Date().toISOString()
+    channel.appendLine(`[${ts}] reqstool ${version ?? 'unknown'} (source: ${source}, path: ${executablePath})`)
+}
+
 export async function activate(context: vscode.ExtensionContext) {
     const cfg = vscode.workspace.getConfiguration('reqstool')
     const timeout = cfg.get<number>('startupTimeout', 5000)
@@ -45,6 +57,11 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     const [executable, serverArgs] = resolveServerCommand(isCommandConfigured, managedBin)
+    const activeSource: ServerSource = isCommandConfigured
+        ? 'configured'
+        : managedBin
+            ? 'managed'
+            : 'system'
 
     // Guard: inform user if reqstool is not installed
     if (!await checkServerInstalled(executable, timeout)) {
@@ -58,10 +75,12 @@ export async function activate(context: vscode.ExtensionContext) {
         return
     }
 
+    const activeVersion = await getInstalledVersion(executable, timeout)
+
     // Warn if system reqstool is older than the version bundled with this extension
     if (!isCommandConfigured && bundledVersion && systemVersion && semverLt(systemVersion, bundledVersion)) {
         vscode.window.showWarningMessage(
-            `System reqstool v${systemVersion} is older than the version bundled with this extension (v${bundledVersion}). ` +
+            `System reqstool ${systemVersion} is older than the version bundled with this extension (${bundledVersion}). ` +
             `Consider upgrading: pipx upgrade reqstool`,
             'Change Source', 'Dismiss'
         ).then(action => {
@@ -80,6 +99,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const outputChannel = vscode.window.createOutputChannel('reqstool')
     const traceOutputChannel = vscode.window.createOutputChannel('reqstool Trace')
+
+    logServerInfo(outputChannel, activeVersion, activeSource, executable)
+
+    const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
+    statusBar.command = 'reqstool.selectServerSource'
+    statusBar.tooltip = 'Click to change reqstool server source'
+    statusBar.text = `reqstool ${activeVersion ?? '?'} (${activeSource})`
+    statusBar.show()
+    context.subscriptions.push(statusBar)
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: cfg.get<string[]>('languages',
@@ -168,6 +196,14 @@ export async function activate(context: vscode.ExtensionContext) {
                 ? await getInstalledVersion(managedBinPath, timeout)
                 : undefined
             await showServerSourcePicker(sysVer, mgrVer, bundledVersion)
+
+            const newSource = vscode.workspace.getConfiguration('reqstool').get<string>('serverSource', 'auto')
+            const [pickedExe] = resolveServerCommand(false, newSource === 'managed' ? managedBinPath : undefined)
+            const pickedVer = await getInstalledVersion(pickedExe, timeout)
+            const pickedSourceLabel: ServerSource = newSource === 'managed' ? 'managed' : 'system'
+            logServerInfo(outputChannel, pickedVer, pickedSourceLabel, pickedExe)
+            statusBar.text = `reqstool ${pickedVer ?? '?'} (${pickedSourceLabel})`
+
             vscode.window.showInformationMessage(
                 'reqstool server source updated. Reload window to apply.',
                 'Reload'
@@ -203,14 +239,14 @@ async function showServerSourcePicker(
         },
         {
             label: 'System installed',
-            description: systemVersion ? `v${systemVersion}` : 'not found',
+            description: systemVersion ?? 'not found',
             detail: systemVersion
                 ? 'Use the reqstool found on PATH.'
                 : 'reqstool was not found on PATH. Install with: pipx install reqstool',
         },
         {
             label: 'Packaged with extension',
-            description: fallbackVersion ? `v${fallbackVersion}` : 'unknown',
+            description: fallbackVersion ?? 'unknown',
             detail: 'Use the reqstool version bundled and managed by this extension.',
         },
     ]
@@ -305,13 +341,21 @@ function resolveServerCommand(isCommandConfigured: boolean, managedBin?: string)
     return ['reqstool', ['lsp']]
 }
 
+// PEP 440-ish version: release (x.y[.z[.w]]), optional pre-release (a1/b2/rc3),
+// optional dev/post (.dev4/.post5), optional local segment (+abc.def).
+const VERSION_RE = /(\d+(?:\.\d+){1,3}(?:(?:[abc]|rc)\d*)?(?:\.(?:dev|post)\d*)?(?:\+[\w.]+)?)/
+
+export function parseVersionFromVersionOutput(stdout: string): string | undefined {
+    const match = stdout.match(VERSION_RE)
+    return match ? match[1] : undefined
+}
+
 async function getInstalledVersion(executable: string, timeout: number): Promise<string | undefined> {
     const { execFile } = await import('node:child_process')
     return new Promise(resolve =>
         execFile(executable, ['--version'], { timeout }, (err, stdout) => {
             if (err) { resolve(undefined); return }
-            const match = stdout.trim().match(/(\d+\.\d+\.\d+)/)
-            resolve(match ? match[1] : undefined)
+            resolve(parseVersionFromVersionOutput(stdout))
         }))
 }
 
