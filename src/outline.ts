@@ -119,10 +119,33 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
 
     private async _loadData(): Promise<ListData | undefined> {
         if (this._scope === 'project') {
-            return this._client.sendRequest<ListData | null>('reqstool/list', {}).then(d => d ?? undefined)
+            // Scope each list call per-URN so we can build qualified urn:id strings for
+            // reqstool/details. reqstool/list without urn returns bare ids only.
+            const urnEntries = await this._client.sendRequest<{ urn: string }[]>('reqstool/list-urns', {})
+                .catch(() => null)
+            if (!urnEntries) { return undefined }
+
+            const perUrn = await Promise.all(
+                urnEntries.map(({ urn }) =>
+                    this._client.sendRequest<ListData | null>('reqstool/list', { urn })
+                        .then(d => ({ urn, data: d }))
+                        .catch(() => null)
+                )
+            )
+
+            const all: ListData = { requirements: [], svcs: [], mvrs: [] }
+            for (const entry of perUrn) {
+                if (!entry?.data) { continue }
+                const { urn, data } = entry
+                all.requirements.push(...data.requirements.map(r => ({ ...r, id: `${urn}:${r.id}` })))
+                all.svcs.push(        ...data.svcs.map(s =>        ({ ...s, id: `${urn}:${s.id}` })))
+                all.mvrs.push(        ...data.mvrs.map(m =>        ({ ...m, id: `${urn}:${m.id}` })))
+            }
+            return all
         }
 
-        // File scope: extract IDs from code lenses for the active file
+        // File scope: extract IDs from code lenses for the active file.
+        // Code lens args already contain fully-qualified urn:id strings.
         const uri = this._activeUri ?? vscode.window.activeTextEditor?.document.uri
         if (!uri) { return { requirements: [], svcs: [], mvrs: [] } }
 
@@ -141,14 +164,14 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
 
         const [reqs, svcs] = await Promise.all([
             Promise.all([...reqIds].map(id =>
-                this._client.sendRequest<{ id: string; title: string; lifecycle: { state: string } } | null>(
+                this._client.sendRequest<{ id: string; urn: string; title: string; lifecycle: { state: string } } | null>(
                     'reqstool/details', { id, type: 'requirement' }
-                ).then(d => d ? { id: d.id, title: d.title, lifecycle_state: d.lifecycle?.state ?? '' } : null)
+                ).then(d => d ? { id: `${d.urn}:${d.id}`, title: d.title, lifecycle_state: d.lifecycle?.state ?? '' } : null)
             )),
             Promise.all([...svcIds].map(id =>
-                this._client.sendRequest<{ id: string; title: string; lifecycle: { state: string }; verification: string } | null>(
+                this._client.sendRequest<{ id: string; urn: string; title: string; lifecycle: { state: string }; verification: string } | null>(
                     'reqstool/details', { id, type: 'svc' }
-                ).then(d => d ? { id: d.id, title: d.title, lifecycle_state: d.lifecycle?.state ?? '', verification: d.verification } : null)
+                ).then(d => d ? { id: `${d.urn}:${d.id}`, title: d.title, lifecycle_state: d.lifecycle?.state ?? '', verification: d.verification } : null)
             )),
         ])
 

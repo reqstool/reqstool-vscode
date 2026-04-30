@@ -229,8 +229,18 @@ export async function activate(context: vscode.ExtensionContext) {
     await client.start()
     context.subscriptions.push(client)
 
+    // Use the version the LSP server reports — now accurate as of dev14.
+    // Falls back to the binary version we detected before starting.
+    const serverVersion = client.initializeResult?.serverInfo?.version ?? activeVersion
+
+    if (serverVersion && serverVersion !== activeVersion) {
+        langStatus.detail = `${serverVersion} (${activeSource})`
+        const ts = new Date().toISOString()
+        outputChannel.appendLine(`[${ts}] reqstool server version: ${serverVersion}`)
+    }
+
     // Lazy-load project stats into the language status item and output channel
-    void loadStatusStats(client, langStatus, outputChannel, activeVersion, activeSource)
+    void loadStatusStats(client, langStatus, outputChannel, serverVersion, activeSource)
 }
 
 type UrnInfo = { urn: string; title: string; variant: string | null }
