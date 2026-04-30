@@ -111,8 +111,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(langStatus)
 
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
-    statusBar.command = 'workbench.action.showLanguageStatus'
-    statusBar.tooltip = 'reqstool — click for status'
+    statusBar.command = 'reqstool.selectServerSource'
+    statusBar.tooltip = new vscode.MarkdownString(
+        'reqstool — click to change server source\n\nClick **{}** in the status bar to view project stats',
+        true
+    )
     statusBar.text = 'reqstool'
     statusBar.show()
     context.subscriptions.push(statusBar)
@@ -226,16 +229,17 @@ export async function activate(context: vscode.ExtensionContext) {
     await client.start()
     context.subscriptions.push(client)
 
-    // Lazy-load project stats into the language status item
-    void loadStatusStats(client, langStatus, activeVersion, activeSource)
+    // Lazy-load project stats into the language status item and output channel
+    void loadStatusStats(client, langStatus, outputChannel, activeVersion, activeSource)
 }
 
-type UrnInfo = { urn: string }
+type UrnInfo = { urn: string; title: string; variant: string | null }
 type ListData = { requirements: { id: string }[]; svcs: { id: string }[]; mvrs: { id: string }[] }
 
 async function loadStatusStats(
     lspClient: LanguageClient,
     item: vscode.LanguageStatusItem,
+    channel: vscode.OutputChannel,
     version: string | undefined,
     source: string,
 ): Promise<void> {
@@ -251,6 +255,9 @@ async function loadStatusStats(
             `${list.svcs.length} SVCs`,
             `${list.mvrs.length} MVRs`,
         ].join(' · ')
+
+        const ts = new Date().toISOString()
+        channel.appendLine(`[${ts}] URNs loaded: ${urns.map(u => u.urn).join(', ')}`)
     } catch {
         // server not ready yet — leave busy spinner, user can refresh
     } finally {
