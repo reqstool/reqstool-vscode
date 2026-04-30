@@ -84,11 +84,6 @@
                 "category": "reqstool"
             },
             {
-                "command": "reqstool.toggleStatus",
-                "title": "reqstool: Toggle Status",
-                "category": "reqstool"
-            },
-            {
                 "command": "reqstool.outline.scopeProject",
                 "title": "Show whole project",
                 "icon": "$(folder)"

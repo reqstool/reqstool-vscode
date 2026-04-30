@@ -6,7 +6,6 @@ import * as vscode from 'vscode'
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 import { DetailsViewProvider } from './details.js'
 import { OutlineProvider } from './outline.js'
-import { StatusPanel } from './status.js'
 
 let client: LanguageClient | undefined
 
@@ -103,15 +102,17 @@ export async function activate(context: vscode.ExtensionContext) {
 
     logServerInfo(outputChannel, activeVersion, activeSource, executable)
 
-    const statusPanel = new StatusPanel(context)
-    statusPanel.setServerInfo(activeVersion, activeSource)
-    context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.toggleStatus', () => statusPanel.toggle())
-    )
+    const langStatus = vscode.languages.createLanguageStatusItem('reqstool.status', { language: '*' })
+    langStatus.severity = vscode.LanguageStatusSeverity.Information
+    langStatus.text = '$(tools) reqstool'
+    langStatus.detail = `${activeVersion ?? 'unknown'} (${activeSource})`
+    langStatus.busy = true
+    langStatus.command = { command: 'reqstool.selectServerSource', title: 'Select Server Source' }
+    context.subscriptions.push(langStatus)
 
     const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
-    statusBar.command = 'reqstool.toggleStatus'
-    statusBar.tooltip = 'reqstool status'
+    statusBar.command = 'workbench.action.showLanguageStatus'
+    statusBar.tooltip = 'reqstool — click for status'
     statusBar.text = 'reqstool'
     statusBar.show()
     context.subscriptions.push(statusBar)
@@ -209,7 +210,8 @@ export async function activate(context: vscode.ExtensionContext) {
             const pickedVer = await getInstalledVersion(pickedExe, timeout)
             const pickedSourceLabel: ServerSource = newSource === 'managed' ? 'managed' : 'system'
             logServerInfo(outputChannel, pickedVer, pickedSourceLabel, pickedExe)
-            statusPanel.setServerInfo(pickedVer, pickedSourceLabel)
+            langStatus.detail = `${pickedVer ?? 'unknown'} (${pickedSourceLabel})`
+            langStatus.busy = true
 
             vscode.window.showInformationMessage(
                 'reqstool server source updated. Reload window to apply.',
@@ -223,7 +225,37 @@ export async function activate(context: vscode.ExtensionContext) {
 
     await client.start()
     context.subscriptions.push(client)
-    statusPanel.setClient(client)
+
+    // Lazy-load project stats into the language status item
+    void loadStatusStats(client, langStatus, activeVersion, activeSource)
+}
+
+type UrnInfo = { urn: string }
+type ListData = { requirements: { id: string }[]; svcs: { id: string }[]; mvrs: { id: string }[] }
+
+async function loadStatusStats(
+    lspClient: LanguageClient,
+    item: vscode.LanguageStatusItem,
+    version: string | undefined,
+    source: string,
+): Promise<void> {
+    try {
+        const [urns, list] = await Promise.all([
+            lspClient.sendRequest<UrnInfo[]>('reqstool/list-urns', {}),
+            lspClient.sendRequest<ListData>('reqstool/list', {}),
+        ])
+        item.detail = [
+            `${version ?? 'unknown'} (${source})`,
+            `${urns.length} URN${urns.length !== 1 ? 's' : ''}`,
+            `${list.requirements.length} reqs`,
+            `${list.svcs.length} SVCs`,
+            `${list.mvrs.length} MVRs`,
+        ].join(' · ')
+    } catch {
+        // server not ready yet — leave busy spinner, user can refresh
+    } finally {
+        item.busy = false
+    }
 }
 
 export async function deactivate(): Promise<void> {
