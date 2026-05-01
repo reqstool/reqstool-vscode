@@ -196,23 +196,30 @@ export async function activate(context: vscode.ExtensionContext) {
     // registers and routes it automatically via ExecuteCommandFeature. No manual registration needed.
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.openDetails', async (args: { id: string; type: string } | undefined) => {
-            if (!args?.id || !args?.type) {
-                vscode.window.showInformationMessage('reqstool: Open Details must be invoked from a hover link.')
-                return
-            }
-            if (!client) { return }
-            try {
-                const data = await client.sendRequest<Record<string, unknown> | null>('reqstool/details', args)
-                if (!data) {
-                    vscode.window.showWarningMessage(`reqstool: no details found for ${args.id}`)
+        vscode.commands.registerCommand(
+            'reqstool.openDetails',
+            // Code lenses pass { ids: string[], type } (plural); hover/outline pass { id: string, type }.
+            async (args: { id?: string; ids?: string[]; type: string } | undefined) => {
+                const id = args?.id ?? args?.ids?.[0]
+                if (!id || !args?.type) {
+                    vscode.window.showInformationMessage('reqstool: Open Details must be invoked from a code lens or hover link.')
                     return
                 }
-                DetailsViewProvider.instance?.show(data)
-            } catch (err) {
-                vscode.window.showErrorMessage(`reqstool: failed to load details for ${args.id}: ${err}`)
+                if (!client) { return }
+                try {
+                    const data = await client.sendRequest<Record<string, unknown> | null>(
+                        'reqstool/details', { id, type: args.type }
+                    )
+                    if (!data) {
+                        vscode.window.showWarningMessage(`reqstool: no details found for ${id}`)
+                        return
+                    }
+                    DetailsViewProvider.instance?.show(data)
+                } catch (err) {
+                    vscode.window.showErrorMessage(`reqstool: failed to load details for ${id}: ${err}`)
+                }
             }
-        })
+        )
     )
 
     const { registerSnippets } = await import('./snippets.js')
