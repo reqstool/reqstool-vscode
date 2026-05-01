@@ -26,6 +26,22 @@ export async function activate(context: vscode.ExtensionContext) {
     const timeout = cfg.get<number>('startupTimeout', 5000)
     const bundledVersion = (context.extension.packageJSON.reqstoolVersion as string | undefined)?.trim() || undefined
 
+    // Register the source picker command early so it's always available (even if server fails to start)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('reqstool.selectServerSource', async () => {
+            const sysVer = await getInstalledVersion('reqstool', timeout)
+            const managedBinPath = getManagedBinPath(context)
+            const mgrVer = fs.existsSync(managedBinPath)
+                ? await getInstalledVersion(managedBinPath, timeout)
+                : undefined
+            await showServerSourcePicker(sysVer, mgrVer, bundledVersion)
+            vscode.window.showInformationMessage(
+                'reqstool server source updated. Reload window to apply.',
+                'Reload'
+            ).then(a => { if (a === 'Reload') vscode.commands.executeCommand('workbench.action.reloadWindow') })
+        })
+    )
+
     // If user explicitly configured serverCommand, skip all source-selection logic
     const cmdInsp = cfg.inspect<string[]>('serverCommand')
     const isCommandConfigured = !!(cmdInsp?.globalValue || cmdInsp?.workspaceValue || cmdInsp?.workspaceFolderValue)
@@ -196,30 +212,6 @@ export async function activate(context: vscode.ExtensionContext) {
             } catch (err) {
                 vscode.window.showErrorMessage(`reqstool: failed to load details for ${args.id}: ${err}`)
             }
-        })
-    )
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.selectServerSource', async () => {
-            const sysVer = await getInstalledVersion('reqstool', timeout)
-            const managedBinPath = getManagedBinPath(context)
-            const mgrVer = fs.existsSync(managedBinPath)
-                ? await getInstalledVersion(managedBinPath, timeout)
-                : undefined
-            await showServerSourcePicker(sysVer, mgrVer, bundledVersion)
-
-            const newSource = vscode.workspace.getConfiguration('reqstool').get<string>('serverSource', 'auto')
-            const [pickedExe] = resolveServerCommand(false, newSource === 'managed' ? managedBinPath : undefined)
-            const pickedVer = await getInstalledVersion(pickedExe, timeout)
-            const pickedSourceLabel: ServerSource = newSource === 'managed' ? 'managed' : 'system'
-            logServerInfo(outputChannel, pickedVer, pickedSourceLabel, pickedExe)
-            langStatus.detail = `${pickedVer ?? 'unknown'} (${pickedSourceLabel})`
-            langStatus.busy = true
-
-            vscode.window.showInformationMessage(
-                'reqstool server source updated. Reload window to apply.',
-                'Reload'
-            ).then(a => { if (a === 'Reload') vscode.commands.executeCommand('workbench.action.reloadWindow') })
         })
     )
 

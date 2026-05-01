@@ -10,9 +10,9 @@ describe('Extension smoke tests', () => {
         assert.ok(ext, 'Extension reqstool.reqstool not found')
     })
 
-    it('reqstool.refresh command is registered', async () => {
+    it('reqstool.selectServerSource command is registered', async () => {
         const commands = await vscode.commands.getCommands(true)
-        assert.ok(commands.includes('reqstool.refresh'), 'reqstool.refresh command not registered')
+        assert.ok(commands.includes('reqstool.selectServerSource'), 'reqstool.selectServerSource command not registered')
     })
 })
 
