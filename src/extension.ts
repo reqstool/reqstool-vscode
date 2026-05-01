@@ -200,33 +200,22 @@ export async function activate(context: vscode.ExtensionContext) {
             'reqstool.openDetails',
             // Code lenses pass { ids: string[], type } (plural); hover/outline pass { id: string, type }.
             async (args: { id?: string; ids?: string[]; type: string } | undefined) => {
-                outputChannel.appendLine(`[openDetails] args: ${JSON.stringify(args)}`)
                 const id = args?.id ?? args?.ids?.[0]
                 if (!id || !args?.type) {
-                    outputChannel.appendLine(`[openDetails] rejected: no id or type`)
                     vscode.window.showInformationMessage('reqstool: Open Details must be invoked from a code lens or hover link.')
                     return
                 }
-                if (!client) {
-                    outputChannel.appendLine(`[openDetails] rejected: no LSP client`)
-                    return
-                }
-                const req = { id, type: args.type }
-                outputChannel.appendLine(`[openDetails] → reqstool/details ${JSON.stringify(req)}`)
+                if (!client) { return }
                 try {
                     const data = await client.sendRequest<Record<string, unknown> | null>(
-                        'reqstool/details', req
+                        'reqstool/details', { id, type: args.type }
                     )
-                    outputChannel.appendLine(`[openDetails] ← response: ${data === null ? 'null' : data === undefined ? 'undefined' : JSON.stringify(data).slice(0, 200)}`)
                     if (!data) {
                         vscode.window.showWarningMessage(`reqstool: no details found for ${id}`)
                         return
                     }
-                    const panel = DetailsViewProvider.instance
-                    outputChannel.appendLine(`[openDetails] DetailsViewProvider.instance: ${panel ? 'present' : 'undefined'}`)
-                    panel?.show(data)
+                    DetailsViewProvider.instance?.show(data)
                 } catch (err) {
-                    outputChannel.appendLine(`[openDetails] error: ${err}`)
                     vscode.window.showErrorMessage(`reqstool: failed to load details for ${id}: ${err}`)
                 }
             }
