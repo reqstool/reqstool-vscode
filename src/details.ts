@@ -234,21 +234,19 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
                     return
                 }
                 try {
-                    // workspace/symbol returns SymbolInformation[].
-                    // name = "CLI_0002.2 — List — JSON Format" (bare id + title, em-dash separated)
-                    // containerName = urn (e.g. "atunko")
-                    const symbols = await this._client.sendRequest<{ name: string; containerName?: string; kind: number }[]>(
-                        'workspace/symbol', { query }
-                    )
-                    const items = (symbols ?? []).map(s => {
-                        const bareId = s.name.split('—')[0].trim() // strip title — keep only the id part
-                        return {
-                            id: s.containerName ? `${s.containerName}:${bareId}` : bareId,
+                    // workspace/symbol returns WorkspaceSymbol[].
+                    // data.id = fully-qualified "urn:id", data.type = "requirement"|"svc"|"mvr"
+                    const symbols = await this._client.sendRequest<{
+                        name: string
+                        data?: { id: string; type: string }
+                    }[]>('workspace/symbol', { query })
+                    const items = (symbols ?? [])
+                        .filter(s => s.data?.id && s.data?.type)
+                        .map(s => ({
+                            id:   s.data!.id,
                             label: s.name,
-                            urn: s.containerName ?? '',
-                            type: s.kind === 11 ? 'svc' : 'requirement',
-                        }
-                    })
+                            type: s.data!.type,
+                        }))
                     webviewView.webview.postMessage({ command: 'searchResults', items })
                 } catch {
                     webviewView.webview.postMessage({ command: 'searchResults', items: [] })
