@@ -98,11 +98,6 @@
                 "command": "reqstool.outline.filter",
                 "title": "Filter",
                 "icon": "$(filter)"
-            },
-            {
-                "command": "reqstool.outline.clearFilter",
-                "title": "Clear filter",
-                "icon": "$(filter-filled)"
             }
         ],
         "menus": {
@@ -122,10 +117,6 @@
                 {
                     "command": "reqstool.outline.filter",
                     "when": "false"
-                },
-                {
-                    "command": "reqstool.outline.clearFilter",
-                    "when": "false"
                 }
             ],
             "view/title": [
@@ -141,12 +132,7 @@
                 },
                 {
                     "command": "reqstool.outline.filter",
-                    "when": "view == reqstool.outlineView && !reqstool.outlineFilterActive",
-                    "group": "navigation"
-                },
-                {
-                    "command": "reqstool.outline.clearFilter",
-                    "when": "view == reqstool.outlineView && reqstool.outlineFilterActive",
+                    "when": "view == reqstool.outlineView",
                     "group": "navigation"
                 }
             ]
