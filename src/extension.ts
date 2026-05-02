@@ -186,16 +186,11 @@ export async function activate(context: vscode.ExtensionContext) {
     const outlineProvider = new OutlineProvider(client)
     vscode.commands.executeCommand('setContext', 'reqstool.outlineScope', 'project')
     context.subscriptions.push(
-        vscode.window.createTreeView('reqstool.outlineView', {
-            treeDataProvider: outlineProvider,
-            showCollapseAll: true,
+        vscode.window.registerWebviewViewProvider('reqstool.outlineView', outlineProvider, {
+            webviewOptions: { retainContextWhenHidden: true }
         }),
         vscode.commands.registerCommand('reqstool.outline.scopeProject', () => outlineProvider.setScope('project')),
         vscode.commands.registerCommand('reqstool.outline.scopeFile',    () => outlineProvider.setScope('file')),
-        vscode.commands.registerCommand('reqstool.outline.filter', async () => {
-            await vscode.commands.executeCommand('reqstool.outlineView.focus')
-            await vscode.commands.executeCommand('list.find')
-        }),
         vscode.window.onDidChangeActiveTextEditor(e => outlineProvider.onEditorChange(e))
     )
 
@@ -244,6 +239,8 @@ export async function activate(context: vscode.ExtensionContext) {
         const ts = new Date().toISOString()
         outputChannel.appendLine(`[${ts}] reqstool server version: ${serverVersion}`)
     }
+
+    detailsProvider.setClient(client)
 
     // Lazy-load project stats into the language status item and output channel
     void loadStatusStats(client, langStatus, outputChannel, serverVersion, activeSource)
