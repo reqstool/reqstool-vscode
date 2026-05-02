@@ -31,6 +31,7 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
     private _scope: Scope = 'project'
     private _cache: ListData | undefined
     private _activeUri: vscode.Uri | undefined
+    private _filter = ''
 
     constructor(private readonly _client: LanguageClient) {}
 
@@ -39,6 +40,14 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
         vscode.commands.executeCommand('setContext', 'reqstool.outlineScope', scope)
         this.refresh()
     }
+
+    setFilter(query: string): void {
+        this._filter = query.trim().toLowerCase()
+        vscode.commands.executeCommand('setContext', 'reqstool.outlineFilterActive', this._filter.length > 0)
+        this._onDidChangeTreeData.fire()
+    }
+
+    get filter(): string { return this._filter }
 
     onEditorChange(editor: vscode.TextEditor | undefined): void {
         if (this._scope !== 'file') { return }
@@ -77,18 +86,26 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
         const data = this._cache
         if (!data) { return [] }
 
+        const f = this._filter
+        const matches = (id: string, title?: string) =>
+            !f || id.toLowerCase().includes(f) || (title ?? '').toLowerCase().includes(f)
+
         if (!node) {
-            // Root: return section nodes with counts
+            const reqs = data.requirements.filter(r => matches(r.id, r.title))
+            const svcs = data.svcs.filter(s => matches(s.id, s.title))
+            const mvrs = data.mvrs.filter(m => matches(m.id))
+            const label = (name: string, shown: number, total: number) =>
+                f ? `${name} (${shown} / ${total})` : `${name} (${total})`
             return [
-                { kind: 'section', type: 'requirement', label: `Requirements (${data.requirements.length})` },
-                { kind: 'section', type: 'svc',         label: `SVCs (${data.svcs.length})` },
-                { kind: 'section', type: 'mvr',         label: `MVRs (${data.mvrs.length})` },
+                { kind: 'section', type: 'requirement', label: label('Requirements', reqs.length, data.requirements.length) },
+                { kind: 'section', type: 'svc',         label: label('SVCs',         svcs.length, data.svcs.length) },
+                { kind: 'section', type: 'mvr',         label: label('MVRs',         mvrs.length, data.mvrs.length) },
             ]
         }
 
         // Children of a section
         if (node.type === 'requirement') {
-            return data.requirements.map(r => ({
+            return data.requirements.filter(r => matches(r.id, r.title)).map(r => ({
                 kind: 'item' as const,
                 id: r.id,
                 type: 'requirement' as const,
@@ -97,7 +114,7 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
             }))
         }
         if (node.type === 'svc') {
-            return data.svcs.map(s => ({
+            return data.svcs.filter(s => matches(s.id, s.title)).map(s => ({
                 kind: 'item' as const,
                 id: s.id,
                 type: 'svc' as const,
@@ -106,7 +123,7 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
             }))
         }
         if (node.type === 'mvr') {
-            return data.mvrs.map(m => ({
+            return data.mvrs.filter(m => matches(m.id)).map(m => ({
                 kind: 'item' as const,
                 id: m.id,
                 type: 'mvr' as const,

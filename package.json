@@ -93,6 +93,16 @@
                 "command": "reqstool.outline.scopeFile",
                 "title": "Show current file",
                 "icon": "$(file-code)"
+            },
+            {
+                "command": "reqstool.outline.filter",
+                "title": "Filter",
+                "icon": "$(filter)"
+            },
+            {
+                "command": "reqstool.outline.clearFilter",
+                "title": "Clear filter",
+                "icon": "$(filter-filled)"
             }
         ],
         "menus": {
@@ -108,6 +118,14 @@
                 {
                     "command": "reqstool.outline.scopeFile",
                     "when": "false"
+                },
+                {
+                    "command": "reqstool.outline.filter",
+                    "when": "false"
+                },
+                {
+                    "command": "reqstool.outline.clearFilter",
+                    "when": "false"
                 }
             ],
             "view/title": [
@@ -119,6 +137,16 @@
                 {
                     "command": "reqstool.outline.scopeFile",
                     "when": "view == reqstool.outlineView && reqstool.outlineScope == 'project'",
+                    "group": "navigation"
+                },
+                {
+                    "command": "reqstool.outline.filter",
+                    "when": "view == reqstool.outlineView && !reqstool.outlineFilterActive",
+                    "group": "navigation"
+                },
+                {
+                    "command": "reqstool.outline.clearFilter",
+                    "when": "view == reqstool.outlineView && reqstool.outlineFilterActive",
                     "group": "navigation"
                 }
             ]

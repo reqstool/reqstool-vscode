@@ -1,6 +1,7 @@
 // Copyright © reqstool
 
 import * as vscode from 'vscode'
+import type { LanguageClient } from 'vscode-languageclient/node'
 
 type Req = {
     type: 'requirement'
@@ -211,6 +212,11 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
 
     private _view: vscode.WebviewView | undefined
     private _pendingData: Record<string, unknown> | undefined
+    private _client: LanguageClient | undefined
+
+    setClient(client: LanguageClient): void {
+        this._client = client
+    }
 
     resolveWebviewView(
         webviewView: vscode.WebviewView,
@@ -219,8 +225,30 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
     ): void {
         this._view = webviewView
         webviewView.webview.options = { enableScripts: true }
+        webviewView.webview.html = DetailsViewProvider._shell()
         webviewView.webview.onDidReceiveMessage(async msg => {
-            if (msg.command === 'openDetails') {
+            if (msg.command === 'search') {
+                const query: string = msg.query ?? ''
+                if (!query.trim() || !this._client) {
+                    webviewView.webview.postMessage({ command: 'searchResults', items: [] })
+                    return
+                }
+                try {
+                    // workspace/symbol returns SymbolInformation[] — reqstool uses name=id, containerName=urn
+                    const symbols = await this._client.sendRequest<{ name: string; containerName?: string; kind: number }[]>(
+                        'workspace/symbol', { query }
+                    )
+                    const items = (symbols ?? []).map(s => ({
+                        id: s.containerName ? `${s.containerName}:${s.name}` : s.name,
+                        label: s.name,
+                        urn: s.containerName ?? '',
+                        type: s.kind === 11 ? 'svc' : 'requirement', // SymbolKind.Interface=11 used for SVCs
+                    }))
+                    webviewView.webview.postMessage({ command: 'searchResults', items })
+                } catch {
+                    webviewView.webview.postMessage({ command: 'searchResults', items: [] })
+                }
+            } else if (msg.command === 'openDetails') {
                 vscode.commands.executeCommand('reqstool.openDetails', { id: msg.id, type: msg.type })
             } else if (msg.command === 'openFqn') {
                 const fqn: string = msg.fqn
@@ -254,12 +282,13 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
                 } else {
                     await vscode.commands.executeCommand('workbench.action.quickOpen', `#${searchSymbol}`)
                 }
+            } else if (msg.command === 'ready') {
+                if (this._pendingData) {
+                    this._update(this._pendingData)
+                    this._pendingData = undefined
+                }
             }
         })
-        if (this._pendingData) {
-            this._update(this._pendingData)
-            this._pendingData = undefined
-        }
     }
 
     show(data: Record<string, unknown>): void {
@@ -275,7 +304,8 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
     private _update(data: Record<string, unknown>): void {
         if (!this._view) { return }
         this._view.title = `${data['id'] ?? 'Details'}`
-        this._view.webview.html = DetailsViewProvider._html(data as unknown as DetailsData)
+        const html = DetailsViewProvider._renderDetail(data as unknown as DetailsData)
+        this._view.webview.postMessage({ command: 'showDetail', html })
     }
 
     static _findSymbol(symbols: vscode.DocumentSymbol[], name: string): vscode.DocumentSymbol | undefined {
@@ -288,36 +318,111 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
         return undefined
     }
 
-    private static _html(data: DetailsData): string {
-        let body: string
-        if (data.type === 'requirement') {
-            body = renderRequirement(data)
-        } else if (data.type === 'svc') {
-            body = renderSvc(data)
-        } else {
-            body = renderMvr(data)
-        }
+    private static _renderDetail(data: DetailsData): string {
+        if (data.type === 'requirement') { return renderRequirement(data) }
+        if (data.type === 'svc')         { return renderSvc(data) }
+        return renderMvr(data)
+    }
+
+    private static _shell(): string {
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-    <style>${CSS}</style>
+    <style>
+${CSS}
+    #search-wrap {
+        position: sticky; top: 0; z-index: 10;
+        background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+        padding: 8px 16px 6px;
+        border-bottom: 1px solid var(--vscode-widget-border, transparent);
+        margin: 0 -24px 8px;
+    }
+    #search-wrap input {
+        width: 100%; box-sizing: border-box;
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border, transparent);
+        border-radius: 3px; padding: 4px 8px;
+        font-family: var(--vscode-font-family); font-size: var(--vscode-font-size);
+        outline: none;
+    }
+    #search-wrap input:focus { border-color: var(--vscode-focusBorder); }
+    #results { margin: 0 -24px; }
+    .result-item {
+        padding: 5px 24px; cursor: pointer;
+        border-bottom: 1px solid var(--vscode-widget-border, transparent);
+        display: flex; gap: 8px; align-items: baseline;
+    }
+    .result-item:hover { background: var(--vscode-list-hoverBackground); }
+    .result-id { font-family: var(--vscode-editor-font-family); font-size: 0.85em; flex: 1; }
+    .result-kind { font-size: 0.75em; color: var(--vscode-descriptionForeground); }
+    #detail { padding-top: 4px; }
+    #placeholder { color: var(--vscode-descriptionForeground); padding: 16px 0; font-size: 0.9em; }
+    </style>
 </head>
-<body>${body}
+<body>
+<div id="search-wrap">
+    <input id="search" type="text" placeholder="🔍 Search requirements and SVCs…" autocomplete="off" spellcheck="false">
+</div>
+<div id="results" hidden></div>
+<div id="detail"><p id="placeholder">No item selected. Click a code lens, hover link, or search above.</p></div>
 <script>
 const vscode = acquireVsCodeApi();
-document.querySelectorAll('.cmd-link').forEach(el => {
-    el.addEventListener('click', e => {
-        e.preventDefault();
-        vscode.postMessage({ command: 'openDetails', id: el.dataset.id, type: el.dataset.type });
-    });
+vscode.postMessage({ command: 'ready' });
+const searchEl  = document.getElementById('search');
+const resultsEl = document.getElementById('results');
+const detailEl  = document.getElementById('detail');
+
+let debounce;
+searchEl.addEventListener('input', () => {
+    clearTimeout(debounce);
+    const q = searchEl.value.trim();
+    if (!q) { resultsEl.hidden = true; resultsEl.innerHTML = ''; return; }
+    debounce = setTimeout(() => vscode.postMessage({ command: 'search', query: q }), 300);
 });
-document.querySelectorAll('.fqn-link').forEach(el => {
-    el.addEventListener('click', () => {
-        vscode.postMessage({ command: 'openFqn', fqn: el.dataset.fqn, kind: el.dataset.kind });
-    });
+
+window.addEventListener('message', ({ data: msg }) => {
+    if (msg.command === 'searchResults') {
+        if (!msg.items.length) { resultsEl.hidden = true; resultsEl.innerHTML = ''; return; }
+        resultsEl.innerHTML = msg.items.map(it =>
+            '<div class="result-item" data-id="' + it.id + '" data-type="' + it.type + '">' +
+            '<span class="result-id">' + esc(it.id) + '</span>' +
+            '<span class="result-kind">' + esc(it.type) + '</span>' +
+            '</div>'
+        ).join('');
+        resultsEl.hidden = false;
+        resultsEl.querySelectorAll('.result-item').forEach(el => {
+            el.addEventListener('click', () => {
+                searchEl.value = '';
+                resultsEl.hidden = true; resultsEl.innerHTML = '';
+                vscode.postMessage({ command: 'openDetails', id: el.dataset.id, type: el.dataset.type });
+            });
+        });
+    } else if (msg.command === 'showDetail') {
+        detailEl.innerHTML = msg.html;
+        wireLinks();
+    }
 });
+
+function wireLinks() {
+    detailEl.querySelectorAll('.cmd-link').forEach(el => {
+        el.addEventListener('click', e => {
+            e.preventDefault();
+            vscode.postMessage({ command: 'openDetails', id: el.dataset.id, type: el.dataset.type });
+        });
+    });
+    detailEl.querySelectorAll('.fqn-link').forEach(el => {
+        el.addEventListener('click', () => {
+            vscode.postMessage({ command: 'openFqn', fqn: el.dataset.fqn, kind: el.dataset.kind });
+        });
+    });
+}
+
+function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 </body>
 </html>`
