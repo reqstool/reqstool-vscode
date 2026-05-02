@@ -194,18 +194,16 @@ const listEl   = document.getElementById('list');
 filterEl.addEventListener('input', () => {
     const q = filterEl.value.toLowerCase();
     clearBtn.hidden = !q;
-    let anyVisible = false;
     document.querySelectorAll('.item').forEach(el => {
         const match = !q || (el.dataset.label ?? '').toLowerCase().includes(q);
         el.classList.toggle('hidden', !match);
-        if (match) anyVisible = true;
     });
     document.querySelectorAll('.section-hdr').forEach(hdr => {
-        const section = hdr.dataset.section;
-        const items = listEl.querySelectorAll('.item[data-section="' + section + '"]:not(.hidden)');
-        const total = listEl.querySelectorAll('.item[data-section="' + section + '"]').length;
-        const shown = items.length;
-        hdr.textContent = sectionLabel(section, shown, total, q);
+        const sec = hdr.dataset.section;
+        const visible = listEl.querySelectorAll('.item[data-section="' + sec + '"]:not(.hidden)').length;
+        const total   = listEl.querySelectorAll('.item[data-section="' + sec + '"]').length;
+        hdr.textContent = sectionLabel(hdr.dataset.label, visible, total, q);
+        hdr.classList.toggle('hidden', q !== '' && visible === 0);
     });
 });
 
@@ -234,21 +232,23 @@ function render(d) {
     if (!d) { listEl.innerHTML = '<div class="empty-msg">No project loaded.</div>'; return; }
     const sections = [
         { key: 'requirements', label: 'Requirements', items: d.requirements, type: 'requirement',
-          icon: i => lifecycleIcon(i.lifecycle_state), label2: i => i.id + ': ' + i.title },
+          icon: i => stateIcon(i.lifecycle_state), row: i => i.id + ': ' + i.title },
         { key: 'svcs',         label: 'SVCs',         items: d.svcs,         type: 'svc',
-          icon: i => lifecycleIcon(i.lifecycle_state), label2: i => i.id + ': ' + i.title },
+          icon: i => stateIcon(i.lifecycle_state), row: i => i.id + ': ' + i.title },
         { key: 'mvrs',         label: 'MVRs',         items: d.mvrs,         type: 'mvr',
-          icon: i => i.passed ? '✅' : '❌',           label2: i => i.id },
+          icon: i => (i.passed ? '✓' : '✗'),          row: i => i.id },
     ];
     const q = filterEl.value.toLowerCase();
     listEl.innerHTML = sections.map(s => {
-        const shown = q ? s.items.filter(i => s.label2(i).toLowerCase().includes(q)).length : s.items.length;
-        const hdr = '<div class="section-hdr" data-section="' + s.key + '">' + sectionLabel(s.label, shown, s.items.length, q) + '</div>';
+        const shown = q ? s.items.filter(i => s.row(i).toLowerCase().includes(q)).length : s.items.length;
+        const hdrHidden = q !== '' && shown === 0 ? ' hidden' : '';
+        const hdr = '<div class="section-hdr' + hdrHidden + '" data-section="' + s.key + '" data-label="' + esc(s.label) + '">' +
+                    sectionLabel(s.label, shown, s.items.length, q) + '</div>';
         const rows = s.items.map(i => {
-            const lbl = s.label2(i);
-            const hidden = q && !lbl.toLowerCase().includes(q) ? ' hidden' : '';
-            return '<div class="item' + hidden + '" data-id="' + esc(i.id) + '" data-type="' + s.type + '" data-label="' + esc(lbl) + '" data-section="' + s.key + '">' +
-                   '<span>' + s.icon(i) + '</span><span class="item-label">' + esc(lbl) + '</span></div>';
+            const lbl = s.row(i);
+            const rowHidden = q && !lbl.toLowerCase().includes(q) ? ' hidden' : '';
+            return '<div class="item' + rowHidden + '" data-id="' + esc(i.id) + '" data-type="' + s.type + '" data-label="' + esc(lbl) + '" data-section="' + s.key + '">' +
+                   '<span class="icon">' + s.icon(i) + '</span><span class="item-label">' + esc(lbl) + '</span></div>';
         }).join('');
         return hdr + rows;
     }).join('');
@@ -259,13 +259,13 @@ function render(d) {
     });
 }
 
-function lifecycleIcon(state) {
+function stateIcon(state) {
     const s = (state ?? '').toLowerCase();
-    if (s.includes('effective') || s.includes('active')) return '$(pass-filled)';
-    if (s.includes('draft')) return '$(circle-outline)';
-    if (s.includes('deprecated')) return '$(warning)';
-    if (s.includes('obsolete')) return '$(error)';
-    return '$(circle-outline)';
+    if (s.includes('effective') || s.includes('active')) return '●';
+    if (s.includes('draft'))      return '○';
+    if (s.includes('deprecated')) return '▲';
+    if (s.includes('obsolete'))   return '✗';
+    return '○';
 }
 function esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
