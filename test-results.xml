@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites name="Mocha Tests" time="0.040" tests="12" failures="0">
-  <testsuite name="Root Suite" timestamp="2026-05-02T19:23:57" tests="0" time="0.000" failures="0">
+  <testsuite name="Root Suite" timestamp="2026-05-02T19:28:39" tests="0" time="0.000" failures="0">
   </testsuite>
-  <testsuite name="Extension smoke tests" timestamp="2026-05-02T19:23:57" tests="2" file="/home/jimisola/cloud/dev/clones/github/reqstool/reqstool-vscode/out/test/extension.test.js" time="0.038" failures="0">
+  <testsuite name="Extension smoke tests" timestamp="2026-05-02T19:28:39" tests="2" file="/home/jimisola/cloud/dev/clones/github/reqstool/reqstool-vscode/out/test/extension.test.js" time="0.038" failures="0">
     <testcase name="Extension smoke tests extension is registered" time="0.000" classname="extension is registered">
     </testcase>
-    <testcase name="Extension smoke tests reqstool.selectServerSource command is registered" time="0.004" classname="reqstool.selectServerSource command is registered">
+    <testcase name="Extension smoke tests reqstool.selectServerSource command is registered" time="0.003" classname="reqstool.selectServerSource command is registered">
     </testcase>
   </testsuite>
-  <testsuite name="parseVersionFromVersionOutput" timestamp="2026-05-02T19:23:57" tests="10" file="/home/jimisola/cloud/dev/clones/github/reqstool/reqstool-vscode/out/test/extension.test.js" time="0.001" failures="0">
+  <testsuite name="parseVersionFromVersionOutput" timestamp="2026-05-02T19:28:39" tests="10" file="/home/jimisola/cloud/dev/clones/github/reqstool/reqstool-vscode/out/test/extension.test.js" time="0.001" failures="0">
     <testcase name="parseVersionFromVersionOutput parses &quot;0.9.1\n        # JSON Schema version: v1\n&quot;" time="0.000" classname="parses &quot;0.9.1\n        # JSON Schema version: v1\n&quot;">
     </testcase>
     <testcase name="parseVersionFromVersionOutput parses &quot;0.9.1.dev10\n        # JSON Schema version: v1\n&quot;" time="0.000" classname="parses &quot;0.9.1.dev10\n        # JSON Schema version: v1\n&quot;">
