@@ -274,7 +274,6 @@ export class DetailsViewProvider implements vscode.WebviewViewProvider {
 
     private _update(data: Record<string, unknown>): void {
         if (!this._view) { return }
-        this._view.title = `${data['id'] ?? 'Details'}`
         this._view.webview.html = DetailsViewProvider._html(data as unknown as DetailsData)
     }
 
