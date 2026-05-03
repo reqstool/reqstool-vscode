@@ -26,6 +26,6 @@ const exactTag = git('git tag --points-at HEAD --sort=-version:refname')
 
 const raw = exactTag || git('git describe --tags --long --abbrev=7')
 
-const version = raw ? raw.replace(/^v/, '') : '0.0.0-dev'
+const version = raw || '0.0.0-dev'
 
 process.stdout.write(version)

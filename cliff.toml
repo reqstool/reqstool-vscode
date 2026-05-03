@@ -25,5 +25,5 @@ commit_parsers = [
   { message = "^test", group = "Testing" },
 ]
 filter_commits = false
-tag_pattern = "v[0-9].*"
+tag_pattern = "[0-9].*"
 sort_commits = "newest"
