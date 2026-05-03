@@ -71,6 +71,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-tags: true
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -85,12 +87,44 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').reqstoolVersion || '(latest)'")
           echo "reqstoolVersion: $VERSION"
+      - name: Build versioned VSIX
+        run: npm run build
+      - name: Get VSIX path
+        id: vsix
+        run: echo "path=$(ls *.vsix | head -1)" >> $GITHUB_OUTPUT
       # - name: Publish to Open VSX Registry
       #   uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
       #   with:
       #     pat: ${{ secrets.OPEN_VSX_TOKEN }}
+      #     extensionFile: ${{ steps.vsix.outputs.path }}
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
+          extensionFile: ${{ steps.vsix.outputs.path }}
+
+  generate-release-notes:
+    name: Generate release notes
+    if: github.event_name == 'release'
+    needs:
+      - publish-vscode-extension
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Generate release notes with git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip all
+        env:
+          OUTPUT: NOTES.md
+      - name: Update GitHub Release body
+        run: gh release edit "${{ github.ref_name }}" --notes-file NOTES.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
