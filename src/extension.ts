@@ -5,14 +5,42 @@ import * as path from 'node:path'
 import * as vscode from 'vscode'
 import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node'
 import { DetailsViewProvider } from './details.js'
-import { OutlineProvider } from './outline.js'
+import { OutlineProvider, OutlineFilterProvider } from './outline.js'
 
 let client: LanguageClient | undefined
+
+type ServerSource = 'system' | 'managed' | 'configured'
+
+function logServerInfo(
+    channel: vscode.OutputChannel,
+    version: string | undefined,
+    source: ServerSource,
+    executablePath: string,
+): void {
+    const ts = new Date().toISOString()
+    channel.appendLine(`[${ts}] reqstool ${version ?? 'unknown'} (source: ${source}, path: ${executablePath})`)
+}
 
 export async function activate(context: vscode.ExtensionContext) {
     const cfg = vscode.workspace.getConfiguration('reqstool')
     const timeout = cfg.get<number>('startupTimeout', 5000)
     const bundledVersion = (context.extension.packageJSON.reqstoolVersion as string | undefined)?.trim() || undefined
+
+    // Register the source picker command early so it's always available (even if server fails to start)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('reqstool.selectServerSource', async () => {
+            const sysVer = await getInstalledVersion('reqstool', timeout)
+            const managedBinPath = getManagedBinPath(context)
+            const mgrVer = fs.existsSync(managedBinPath)
+                ? await getInstalledVersion(managedBinPath, timeout)
+                : undefined
+            await showServerSourcePicker(sysVer, mgrVer, bundledVersion)
+            vscode.window.showInformationMessage(
+                'reqstool server source updated. Reload window to apply.',
+                'Reload'
+            ).then(a => { if (a === 'Reload') vscode.commands.executeCommand('workbench.action.reloadWindow') })
+        })
+    )
 
     // If user explicitly configured serverCommand, skip all source-selection logic
     const cmdInsp = cfg.inspect<string[]>('serverCommand')
@@ -45,6 +73,11 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     const [executable, serverArgs] = resolveServerCommand(isCommandConfigured, managedBin)
+    const activeSource: ServerSource = isCommandConfigured
+        ? 'configured'
+        : managedBin
+            ? 'managed'
+            : 'system'
 
     // Guard: inform user if reqstool is not installed
     if (!await checkServerInstalled(executable, timeout)) {
@@ -58,10 +91,12 @@ export async function activate(context: vscode.ExtensionContext) {
         return
     }
 
+    const activeVersion = await getInstalledVersion(executable, timeout)
+
     // Warn if system reqstool is older than the version bundled with this extension
     if (!isCommandConfigured && bundledVersion && systemVersion && semverLt(systemVersion, bundledVersion)) {
         vscode.window.showWarningMessage(
-            `System reqstool v${systemVersion} is older than the version bundled with this extension (v${bundledVersion}). ` +
+            `System reqstool ${systemVersion} is older than the version bundled with this extension (${bundledVersion}). ` +
             `Consider upgrading: pipx upgrade reqstool`,
             'Change Source', 'Dismiss'
         ).then(action => {
@@ -80,6 +115,26 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const outputChannel = vscode.window.createOutputChannel('reqstool')
     const traceOutputChannel = vscode.window.createOutputChannel('reqstool Trace')
+
+    logServerInfo(outputChannel, activeVersion, activeSource, executable)
+
+    const langStatus = vscode.languages.createLanguageStatusItem('reqstool.status', { language: '*' })
+    langStatus.severity = vscode.LanguageStatusSeverity.Information
+    langStatus.text = '$(tools) reqstool'
+    langStatus.detail = `${activeVersion ?? 'unknown'} (${activeSource})`
+    langStatus.busy = true
+    langStatus.command = { command: 'reqstool.selectServerSource', title: 'Select Server Source' }
+    context.subscriptions.push(langStatus)
+
+    const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
+    statusBar.command = 'reqstool.selectServerSource'
+    statusBar.tooltip = new vscode.MarkdownString(
+        'reqstool — click to change server source\n\nClick **{}** in the status bar to view project stats',
+        true
+    )
+    statusBar.text = 'reqstool'
+    statusBar.show()
+    context.subscriptions.push(statusBar)
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: cfg.get<string[]>('languages',
@@ -129,9 +184,17 @@ export async function activate(context: vscode.ExtensionContext) {
     )
 
     const outlineProvider = new OutlineProvider(client)
+    const filterProvider  = new OutlineFilterProvider()
     vscode.commands.executeCommand('setContext', 'reqstool.outlineScope', 'project')
     context.subscriptions.push(
-        vscode.window.registerTreeDataProvider('reqstool.outlineView', outlineProvider),
+        filterProvider.onFilter(q => outlineProvider.setFilter(q)),
+        vscode.window.registerWebviewViewProvider(OutlineFilterProvider.viewId, filterProvider, {
+            webviewOptions: { retainContextWhenHidden: true }
+        }),
+        vscode.window.createTreeView('reqstool.outlineView', {
+            treeDataProvider: outlineProvider,
+            showCollapseAll: true,
+        }),
         vscode.commands.registerCommand('reqstool.outline.scopeProject', () => outlineProvider.setScope('project')),
         vscode.commands.registerCommand('reqstool.outline.scopeFile',    () => outlineProvider.setScope('file')),
         vscode.window.onDidChangeActiveTextEditor(e => outlineProvider.onEditorChange(e))
@@ -141,38 +204,30 @@ export async function activate(context: vscode.ExtensionContext) {
     // registers and routes it automatically via ExecuteCommandFeature. No manual registration needed.
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.openDetails', async (args: { id: string; type: string } | undefined) => {
-            if (!args?.id || !args?.type) {
-                vscode.window.showInformationMessage('reqstool: Open Details must be invoked from a hover link.')
-                return
-            }
-            if (!client) { return }
-            try {
-                const data = await client.sendRequest<Record<string, unknown> | null>('reqstool/details', args)
-                if (!data) {
-                    vscode.window.showWarningMessage(`reqstool: no details found for ${args.id}`)
+        vscode.commands.registerCommand(
+            'reqstool.openDetails',
+            // Code lenses pass { ids: string[], type } (plural); hover/outline pass { id: string, type }.
+            async (args: { id?: string; ids?: string[]; type: string } | undefined) => {
+                const id = args?.id ?? args?.ids?.[0]
+                if (!id || !args?.type) {
+                    vscode.window.showInformationMessage('reqstool: Open Details must be invoked from a code lens or hover link.')
                     return
                 }
-                DetailsViewProvider.instance?.show(data)
-            } catch (err) {
-                vscode.window.showErrorMessage(`reqstool: failed to load details for ${args.id}: ${err}`)
+                if (!client) { return }
+                try {
+                    const data = await client.sendRequest<Record<string, unknown> | null>(
+                        'reqstool/details', { id, type: args.type }
+                    )
+                    if (!data) {
+                        vscode.window.showWarningMessage(`reqstool: no details found for ${id}`)
+                        return
+                    }
+                    DetailsViewProvider.instance?.show(data)
+                } catch (err) {
+                    vscode.window.showErrorMessage(`reqstool: failed to load details for ${id}: ${err}`)
+                }
             }
-        })
-    )
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('reqstool.selectServerSource', async () => {
-            const sysVer = await getInstalledVersion('reqstool', timeout)
-            const managedBinPath = getManagedBinPath(context)
-            const mgrVer = fs.existsSync(managedBinPath)
-                ? await getInstalledVersion(managedBinPath, timeout)
-                : undefined
-            await showServerSourcePicker(sysVer, mgrVer, bundledVersion)
-            vscode.window.showInformationMessage(
-                'reqstool server source updated. Reload window to apply.',
-                'Reload'
-            ).then(a => { if (a === 'Reload') vscode.commands.executeCommand('workbench.action.reloadWindow') })
-        })
+        )
     )
 
     const { registerSnippets } = await import('./snippets.js')
@@ -180,6 +235,53 @@ export async function activate(context: vscode.ExtensionContext) {
 
     await client.start()
     context.subscriptions.push(client)
+
+    // Use the version the LSP server reports — now accurate as of dev14.
+    // Falls back to the binary version we detected before starting.
+    const serverVersion = client.initializeResult?.serverInfo?.version ?? activeVersion
+
+    if (serverVersion && serverVersion !== activeVersion) {
+        langStatus.detail = `${serverVersion} (${activeSource})`
+        const ts = new Date().toISOString()
+        outputChannel.appendLine(`[${ts}] reqstool server version: ${serverVersion}`)
+    }
+
+    detailsProvider.setClient(client)
+
+    // Lazy-load project stats into the language status item and output channel
+    void loadStatusStats(client, langStatus, outputChannel, serverVersion, activeSource)
+}
+
+type UrnInfo = { urn: string; title: string; variant: string | null }
+type ListData = { requirements: { id: string }[]; svcs: { id: string }[]; mvrs: { id: string }[] }
+
+async function loadStatusStats(
+    lspClient: LanguageClient,
+    item: vscode.LanguageStatusItem,
+    channel: vscode.OutputChannel,
+    version: string | undefined,
+    source: string,
+): Promise<void> {
+    try {
+        const [urns, list] = await Promise.all([
+            lspClient.sendRequest<UrnInfo[]>('reqstool/list-urns', {}),
+            lspClient.sendRequest<ListData>('reqstool/list', {}),
+        ])
+        item.detail = [
+            `${version ?? 'unknown'} (${source})`,
+            `${urns.length} URN${urns.length !== 1 ? 's' : ''}`,
+            `${list.requirements.length} reqs`,
+            `${list.svcs.length} SVCs`,
+            `${list.mvrs.length} MVRs`,
+        ].join(' · ')
+
+        const ts = new Date().toISOString()
+        channel.appendLine(`[${ts}] URNs loaded: ${urns.map(u => u.urn).join(', ')}`)
+    } catch {
+        // server not ready yet — leave busy spinner, user can refresh
+    } finally {
+        item.busy = false
+    }
 }
 
 export async function deactivate(): Promise<void> {
@@ -203,14 +305,14 @@ async function showServerSourcePicker(
         },
         {
             label: 'System installed',
-            description: systemVersion ? `v${systemVersion}` : 'not found',
+            description: systemVersion ?? 'not found',
             detail: systemVersion
                 ? 'Use the reqstool found on PATH.'
                 : 'reqstool was not found on PATH. Install with: pipx install reqstool',
         },
         {
             label: 'Packaged with extension',
-            description: fallbackVersion ? `v${fallbackVersion}` : 'unknown',
+            description: fallbackVersion ?? 'unknown',
             detail: 'Use the reqstool version bundled and managed by this extension.',
         },
     ]
@@ -305,13 +407,21 @@ function resolveServerCommand(isCommandConfigured: boolean, managedBin?: string)
     return ['reqstool', ['lsp']]
 }
 
+// PEP 440-ish version: release (x.y[.z[.w]]), optional pre-release (a1/b2/rc3),
+// optional dev/post (.dev4/.post5), optional local segment (+abc.def).
+const VERSION_RE = /(\d{1,10}(?:\.\d{1,10}){1,3}(?:(?:[abc]|rc)\d{0,10})?(?:\.(?:dev|post)\d{0,10})?(?:\+[\w.]+)?)/
+
+export function parseVersionFromVersionOutput(stdout: string): string | undefined {
+    const match = stdout.match(VERSION_RE)
+    return match ? match[1] : undefined
+}
+
 async function getInstalledVersion(executable: string, timeout: number): Promise<string | undefined> {
     const { execFile } = await import('node:child_process')
     return new Promise(resolve =>
         execFile(executable, ['--version'], { timeout }, (err, stdout) => {
             if (err) { resolve(undefined); return }
-            const match = stdout.trim().match(/(\d+\.\d+\.\d+)/)
-            resolve(match ? match[1] : undefined)
+            resolve(parseVersionFromVersionOutput(stdout))
         }))
 }
 

@@ -2,7 +2,7 @@
     "name": "reqstool",
     "displayName": "reqstool",
     "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
-    "version": "0.1.0",
+    "version": "0.0.0-dev",
     "reqstoolVersion": "0.8.0",
     "publisher": "reqstool",
     "author": "reqstool",
@@ -21,6 +21,7 @@
         "Testing"
     ],
     "activationEvents": [
+        "onStartupFinished",
         "workspaceContains:**/requirements.yml",
         "onView:reqstool.detailsView",
         "onView:reqstool.outlineView"
@@ -37,7 +38,7 @@
         "test-with-report": "vscode-test",
         "test:ui": "extest setup-and-run './out/test/ui/*.test.js' --open_resource src/test/fixtures/test.code-workspace",
         "clean": "rimraf out",
-        "build": "rimraf out && vsce package"
+        "build": "rimraf out && node scripts/build.mjs"
     },
     "contributes": {
         "viewsContainers": {
@@ -51,6 +52,12 @@
         },
         "views": {
             "reqstool": [
+                {
+                    "type": "webview",
+                    "id": "reqstool.filterView",
+                    "name": "Filter",
+                    "visibility": "visible"
+                },
                 {
                     "id": "reqstool.outlineView",
                     "name": "Outline"
