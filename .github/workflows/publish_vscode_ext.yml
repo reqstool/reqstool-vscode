@@ -1,11 +1,11 @@
 name: Publish to Open VSX Registry and Visual Studio Marketplace
 
 on:
-  release:
-    types: [created]
   push:
     branches:
       - main
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       reqstool_version:
@@ -28,7 +28,7 @@ jobs:
 
   dry-run:
     # Validates packaging and PAT token without uploading.
-    # Runs independently of build — manifest validation does not require tests to pass.
+    # Runs on push to main and workflow_dispatch only — not on release publishes.
     # Skips the publish step when VS_MARKETPLACE_TOKEN is not yet configured.
     name: Dry-run publish (skipped if token absent)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -63,7 +63,6 @@ jobs:
 
   publish-vscode-extension:
     name: Publish extension
-    # only runs on real releases
     if: github.event_name == 'release'
     needs:
       - build
@@ -71,26 +70,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-tags: true
       - uses: actions/setup-node@v6
         with:
           node-version: 24
       - run: npm ci
       - name: Pin reqstool version
-        # Note: reqstool_version input is only available via workflow_dispatch.
-        # On release events (no manual inputs), this step is skipped and the
-        # published extension installs the latest reqstool at runtime.
         if: ${{ inputs.reqstool_version != '' }}
         run: npm pkg set reqstoolVersion="${{ inputs.reqstool_version }}"
       - name: Log effective reqstool version
         run: |
           VERSION=$(node -p "require('./package.json').reqstoolVersion || '(latest)'")
           echo "reqstoolVersion: $VERSION"
+      - name: Verify version from git tag
+        run: |
+          VERSION=$(node scripts/get-version.mjs)
+          if [ "$VERSION" = "0.0.0-dev" ]; then
+            echo "ERROR: could not derive version from git tag — ensure the tag exists and fetch-tags is enabled"
+            exit 1
+          fi
+          echo "Publishing version: $VERSION"
+      - name: Build versioned VSIX
+        run: npm run build
+      - name: Get VSIX path
+        id: vsix
+        run: echo "path=$(ls *.vsix | head -1)" >> $GITHUB_OUTPUT
       # - name: Publish to Open VSX Registry
       #   uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
       #   with:
       #     pat: ${{ secrets.OPEN_VSX_TOKEN }}
+      #     extensionFile: ${{ steps.vsix.outputs.path }}
       - name: Publish to Visual Studio Marketplace
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
+          extensionFile: ${{ steps.vsix.outputs.path }}

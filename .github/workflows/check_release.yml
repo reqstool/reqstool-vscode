@@ -1,4 +1,4 @@
-name: Lint
+name: Check Release
 on:
   workflow_call:
 
@@ -6,6 +6,17 @@ jobs:
   check-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Check branch and tag
-        if: github.event_name == 'push' && !(github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/v'))
-        run: exit 1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Validate release tag
+        run: |
+          if [[ "${{ github.ref }}" != refs/tags/* ]]; then
+            echo "Not a tag release (ref: ${{ github.ref }})"
+            exit 1
+          fi
+          TAG="${{ github.ref_name }}"
+          if ! npx --yes semver "$TAG" > /dev/null; then
+            echo "Tag '$TAG' is not a valid npm semver version (expected X.Y.Z or X.Y.Z-pre.1)"
+            exit 1
+          fi
