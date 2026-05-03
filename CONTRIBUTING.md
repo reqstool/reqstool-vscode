@@ -156,21 +156,28 @@ No version is stored in `package.json` — the version is derived from the git t
 ### What happens automatically
 
 ```
-Release workflow
-  └─ validates semver, creates and pushes git tag
+Release workflow (workflow_dispatch)
+  ├─ validates semver
+  ├─ creates and pushes git tag
+  ├─ generates changelog with git-cliff
+  └─ creates DRAFT GitHub Release with changelog body
+       ↓
+       human reviews and edits the draft in the GitHub UI
+       ↓ clicks Publish
        └─ triggers Publish workflow (publish_vscode_ext.yml)
             ├─ check-release   validates tag is valid npm semver
             ├─ build           runs tests, builds VSIX
-            ├─ publish         stamps VSIX with tag version, publishes to VS Marketplace
-            └─ generate-release-notes  runs git-cliff, creates GitHub Release with changelog
+            └─ publish         stamps VSIX with tag version, publishes to VS Marketplace
 ```
+
+The draft is the review gate — the marketplace publish only happens after you approve it.
 
 ### Publish workflow trigger matrix
 
-| Event | check-release | build | dry-run | publish | release-notes |
-|-------|:---:|:---:|:---:|:---:|:---:|
-| Push to `main` | | ✓ | ✓ | | |
-| Tag push (via Release workflow) | ✓ | ✓ | | ✓ | ✓ |
-| `workflow_dispatch` | | ✓ | ✓ | | |
+| Event | check-release | build | dry-run | publish |
+|-------|:---:|:---:|:---:|:---:|
+| Push to `main` | | ✓ | ✓ | |
+| Release published (via draft approval) | ✓ | ✓ | | ✓ |
+| `workflow_dispatch` | | ✓ | ✓ | |
 
 Requires the `VS_MARKETPLACE_TOKEN` secret (and `OPEN_VSX_TOKEN` when Open VSX publishing is enabled) to be configured in the repository.
