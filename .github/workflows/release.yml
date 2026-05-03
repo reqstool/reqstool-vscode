@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (npm semver, e.g. 1.2.3 or 1.2.3-rc.1) — no v prefix'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Validate semver version
+        run: |
+          if ! npx --yes semver "${{ inputs.version }}" > /dev/null; then
+            echo "Version '${{ inputs.version }}' is not valid npm semver (expected X.Y.Z or X.Y.Z-pre.N)"
+            exit 1
+          fi
+      - name: Check tag does not already exist
+        run: |
+          if git rev-parse "${{ inputs.version }}" > /dev/null 2>&1; then
+            echo "Tag '${{ inputs.version }}' already exists"
+            exit 1
+          fi
+      - name: Create and push tag
+        run: |
+          git tag "${{ inputs.version }}"
+          git push origin "${{ inputs.version }}"

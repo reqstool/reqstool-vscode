@@ -141,6 +141,36 @@ All commits must include a DCO sign-off (`git commit -s`).
 - Open a pull request for all changes.
 - PR titles must follow Conventional Commits.
 
-## Publishing
+## Release flow
 
-Publishing to Open VSX and the VS Marketplace is automated via the `publish_vscode_ext.yml` workflow when a GitHub Release is created. Requires the `OPEN_VSX_TOKEN` and `VS_MARKETPLACE_TOKEN` secrets to be configured in the repository.
+No version is stored in `package.json` — the version is derived from the git tag at build time.
+
+### Triggering a release
+
+1. Go to **Actions → Release → Run workflow**
+2. Enter the version (e.g. `1.2.3` or `1.2.3-rc.1`)
+   - Must be valid [npm semver](https://semver.org/) — no `v` prefix
+   - `PATCH` for bug fixes, `MINOR` for new features, `MAJOR` for breaking changes
+3. Click **Run workflow**
+
+### What happens automatically
+
+```
+Release workflow
+  └─ validates semver, creates and pushes git tag
+       └─ triggers Publish workflow (publish_vscode_ext.yml)
+            ├─ check-release   validates tag is valid npm semver
+            ├─ build           runs tests, builds VSIX
+            ├─ publish         stamps VSIX with tag version, publishes to VS Marketplace
+            └─ generate-release-notes  runs git-cliff, creates GitHub Release with changelog
+```
+
+### Publish workflow trigger matrix
+
+| Event | check-release | build | dry-run | publish | release-notes |
+|-------|:---:|:---:|:---:|:---:|:---:|
+| Push to `main` | | ✓ | ✓ | | |
+| Tag push (via Release workflow) | ✓ | ✓ | | ✓ | ✓ |
+| `workflow_dispatch` | | ✓ | ✓ | | |
+
+Requires the `VS_MARKETPLACE_TOKEN` secret (and `OPEN_VSX_TOKEN` when Open VSX publishing is enabled) to be configured in the repository.

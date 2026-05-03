@@ -38,8 +38,7 @@
         "test-with-report": "vscode-test",
         "test:ui": "extest setup-and-run './out/test/ui/*.test.js' --open_resource src/test/fixtures/test.code-workspace",
         "clean": "rimraf out",
-        "build": "rimraf out && node scripts/build.mjs",
-        "prepack": "node -e \"const v=require('./package.json').version; if(v==='0.0.0-dev'){console.error('ERROR: placeholder version detected — use npm run build instead of vsce package directly');process.exit(1);}\""
+        "build": "rimraf out && node scripts/build.mjs"
     },
     "contributes": {
         "viewsContainers": {
