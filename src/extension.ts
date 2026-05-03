@@ -409,7 +409,7 @@ function resolveServerCommand(isCommandConfigured: boolean, managedBin?: string)
 
 // PEP 440-ish version: release (x.y[.z[.w]]), optional pre-release (a1/b2/rc3),
 // optional dev/post (.dev4/.post5), optional local segment (+abc.def).
-const VERSION_RE = /(\d+(?:\.\d+){1,3}(?:(?:[abc]|rc)\d*)?(?:\.(?:dev|post)\d*)?(?:\+[\w.]+)?)/
+const VERSION_RE = /(\d{1,10}(?:\.\d{1,10}){1,3}(?:(?:[abc]|rc)\d{0,10})?(?:\.(?:dev|post)\d{0,10})?(?:\+[\w.]+)?)/
 
 export function parseVersionFromVersionOutput(stdout: string): string | undefined {
     const match = stdout.match(VERSION_RE)
