@@ -6,16 +6,16 @@ reqstool links requirements, software verification cases, and manual verificatio
 
 ## Features
 
-| Feature | How to access |
-|---|---|
-| Hover tooltips | Hover over annotated identifiers in source files |
-| IntelliSense completion | Triggered automatically in YAML files |
-| Go to definition | `F12` or right-click → Go to Definition |
-| Outline view | `Ctrl+Shift+O` or the Outline panel in the Explorer |
-| Diagnostics | Problems panel (`Ctrl+Shift+M`) |
-| Refresh | Command Palette → **reqstool: Refresh** |
-| YAML snippets | Type `Requirement`, `SVC`, or `MVR` in a YAML file |
-| Select server source | Command Palette → **reqstool: Select Server Source** |
+| Feature                 | How to access                                        |
+| ----------------------- | ---------------------------------------------------- |
+| Hover tooltips          | Hover over annotated identifiers in source files     |
+| IntelliSense completion | Triggered automatically in YAML files                |
+| Go to definition        | `F12` or right-click → Go to Definition              |
+| Outline view            | `Ctrl+Shift+O` or the Outline panel in the Explorer  |
+| Diagnostics             | Problems panel (`Ctrl+Shift+M`)                      |
+| Refresh                 | Command Palette → **reqstool: Refresh**              |
+| YAML snippets           | Type `Requirement`, `SVC`, or `MVR` in a YAML file   |
+| Select server source    | Command Palette → **reqstool: Select Server Source** |
 
 <!-- Screenshots: add images to the images/ directory and uncomment below -->
 <!--
@@ -49,11 +49,11 @@ Standard VS Code is hardcoded to Microsoft's Marketplace and cannot use Open VSX
 2. Open a workspace that contains a `requirements.yml` file.
 3. On first activation a picker appears — choose which reqstool to use:
 
-| Option | Description |
-|---|---|
-| **Auto** *(default)* | Use system reqstool if installed; otherwise fall back to the version packaged with this extension. |
-| **System installed** | Always use the `reqstool` found on PATH (version shown). |
-| **Packaged with extension** | Always use the version bundled and managed by this extension (version shown). |
+| Option                      | Description                                                                                        |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| **Auto** _(default)_        | Use system reqstool if installed; otherwise fall back to the version packaged with this extension. |
+| **System installed**        | Always use the `reqstool` found on PATH (version shown).                                           |
+| **Packaged with extension** | Always use the version bundled and managed by this extension (version shown).                      |
 
 Your choice is saved globally and will not be asked again. To change it later, run **reqstool: Select Server Source** from the Command Palette.
 
@@ -61,52 +61,57 @@ Your choice is saved globally and will not be asked again. To change it later, r
 
 ## Configuration
 
-| Setting | Default | Description |
-|---|---|---|
-| `reqstool.serverSource` | `"auto"` | Which reqstool to use: `auto` (system if available, otherwise managed), `system` (PATH), `managed` (bundled). Use **reqstool: Select Server Source** to pick interactively. |
-| `reqstool.serverCommand` | — | Override the full server command (array). Takes priority over `serverSource`. See [Custom server command](#custom-server-command). |
-| `reqstool.trace.server` | `"off"` | LSP communication tracing. Set to `"messages"` or `"verbose"` to debug. |
-| `reqstool.startupTimeout` | `5000` | Milliseconds to wait when checking if reqstool is available. |
-| `reqstool.symbolLookupDelay` | `500` | Milliseconds to wait after opening a file before querying document symbols. |
-| `reqstool.fileWatchPattern` | `**/{requirements,...}.yml` | Glob pattern for reqstool YAML files to watch for changes. |
-| `reqstool.languages` | all supported | Language IDs for which the LSP client is active (checkbox list in Settings UI). |
+| Setting                      | Default                     | Description                                                                                                                                                                 |
+| ---------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reqstool.serverSource`      | `"auto"`                    | Which reqstool to use: `auto` (system if available, otherwise managed), `system` (PATH), `managed` (bundled). Use **reqstool: Select Server Source** to pick interactively. |
+| `reqstool.serverCommand`     | —                           | Override the full server command (array). Takes priority over `serverSource`. See [Custom server command](#custom-server-command).                                          |
+| `reqstool.trace.server`      | `"off"`                     | LSP communication tracing. Set to `"messages"` or `"verbose"` to debug.                                                                                                     |
+| `reqstool.startupTimeout`    | `5000`                      | Milliseconds to wait when checking if reqstool is available.                                                                                                                |
+| `reqstool.symbolLookupDelay` | `500`                       | Milliseconds to wait after opening a file before querying document symbols.                                                                                                 |
+| `reqstool.fileWatchPattern`  | `**/{requirements,...}.yml` | Glob pattern for reqstool YAML files to watch for changes.                                                                                                                  |
+| `reqstool.languages`         | all supported               | Language IDs for which the LSP client is active (checkbox list in Settings UI).                                                                                             |
 
 ### Custom server command
 
 For most users, `reqstool.serverSource` is sufficient. `reqstool.serverCommand` is for advanced cases where you need full control over the command and arguments — it takes priority over `serverSource` when set.
 
 **Use a specific binary on PATH:**
+
 ```json
 {
-    "reqstool.serverCommand": ["reqstool", "lsp"]
+  "reqstool.serverCommand": ["reqstool", "lsp"]
 }
 ```
 
 **Use an absolute path:**
+
 ```json
 {
-    "reqstool.serverCommand": ["/home/user/.local/bin/reqstool", "lsp"]
+  "reqstool.serverCommand": ["/home/user/.local/bin/reqstool", "lsp"]
 }
 ```
 
 **Use a specific virtual environment:**
+
 ```json
 {
-    "reqstool.serverCommand": ["/home/user/.venv/bin/reqstool", "lsp"]
+  "reqstool.serverCommand": ["/home/user/.venv/bin/reqstool", "lsp"]
 }
 ```
 
 **Use a specific Python interpreter:**
+
 ```json
 {
-    "reqstool.serverCommand": ["python", "-m", "reqstool", "lsp"]
+  "reqstool.serverCommand": ["python", "-m", "reqstool", "lsp"]
 }
 ```
 
 **Enable debug logging:**
+
 ```json
 {
-    "reqstool.serverCommand": ["reqstool", "lsp", "--log-level", "debug"]
+  "reqstool.serverCommand": ["reqstool", "lsp", "--log-level", "debug"]
 }
 ```
 

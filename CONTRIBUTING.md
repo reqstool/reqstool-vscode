@@ -51,17 +51,17 @@ Use this when you want to test the extension exactly as an end user would — in
 
 1. Build the package:
 
-    ```bash
-    npm run build
-    ```
+   ```bash
+   npm run build
+   ```
 
-    This compiles the TypeScript and produces `reqstool-0.1.0.vsix` in the project root.
+   This compiles the TypeScript and produces `reqstool-0.1.0.vsix` in the project root.
 
 2. Install it into VS Code:
 
-    ```bash
-    code --install-extension reqstool-*.vsix
-    ```
+   ```bash
+   code --install-extension reqstool-*.vsix
+   ```
 
 3. Reload VS Code when prompted (or run **Developer: Reload Window** from the Command Palette).
 
@@ -174,10 +174,10 @@ The draft is the review gate — the marketplace publish only happens after you 
 
 ### Publish workflow trigger matrix
 
-| Event | check-release | build | dry-run | publish |
-|-------|:---:|:---:|:---:|:---:|
-| Push to `main` | | ✓ | ✓ | |
-| Release published (via draft approval) | ✓ | ✓ | | ✓ |
-| `workflow_dispatch` | | ✓ | ✓ | |
+| Event                                  | check-release | build | dry-run | publish |
+| -------------------------------------- | :-----------: | :---: | :-----: | :-----: |
+| Push to `main`                         |               |   ✓   |    ✓    |         |
+| Release published (via draft approval) |       ✓       |   ✓   |         |    ✓    |
+| `workflow_dispatch`                    |               |   ✓   |    ✓    |         |
 
 Requires the `VS_MARKETPLACE_TOKEN` secret (and `OPEN_VSX_TOKEN` when Open VSX publishing is enabled) to be configured in the repository.
