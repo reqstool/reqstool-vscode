@@ -24,9 +24,28 @@ reqstool links requirements, software verification cases, and manual verificatio
 ![Inline diagnostics in the Problems panel](images/diagnostics.png)
 -->
 
+## Installation
+
+This extension is distributed via **[Open VSX Registry](https://open-vsx.org/extension/reqstool/reqstool)** and as a **VSIX file attached to each [GitHub Release](https://github.com/reqstool/reqstool-vscode/releases)**.
+
+We do not currently publish to the Visual Studio Marketplace — it requires a Microsoft publisher account, an Azure DevOps organisation, and a credit card, which is unnecessary friction for an open-source project.
+
+### Open VSX (VSCodium and open-source editors)
+
+[VSCodium](https://vscodium.com), Gitpod, Eclipse Theia, and other open-source editors use Open VSX by default. Search for **reqstool** in the Extensions panel and install directly.
+
+### VSIX file (standard VS Code)
+
+Standard VS Code is hardcoded to Microsoft's Marketplace and cannot use Open VSX without unsupported workarounds. Install via VSIX instead:
+
+1. Download `reqstool-<version>.vsix` from the [latest GitHub Release](https://github.com/reqstool/reqstool-vscode/releases/latest).
+2. Install it:
+   - **Command line:** `code --install-extension reqstool-<version>.vsix`
+   - **VS Code UI:** Open the Extensions panel → `···` menu → **Install from VSIX…**
+
 ## Getting Started
 
-1. Install the extension from the VS Code Marketplace or Open VSX Registry.
+1. Install the extension (see [Installation](#installation) above).
 2. Open a workspace that contains a `requirements.yml` file.
 3. On first activation a picker appears — choose which reqstool to use:
 
