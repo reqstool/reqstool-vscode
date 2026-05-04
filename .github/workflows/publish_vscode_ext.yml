@@ -1,4 +1,4 @@
-name: Publish to Open VSX Registry and Visual Studio Marketplace
+name: Publish to Open VSX Registry
 
 on:
   push:
@@ -29,11 +29,11 @@ jobs:
   dry-run:
     # Validates packaging and PAT token without uploading.
     # Runs on push to main and workflow_dispatch only — not on release publishes.
-    # Skips the publish step when VS_MARKETPLACE_TOKEN is not yet configured.
+    # Skips the publish step when OPEN_VSX_TOKEN is not yet configured.
     name: Dry-run publish (skipped if token absent)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     env:
-      VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -48,17 +48,11 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').reqstoolVersion || '(latest)'")
           echo "reqstoolVersion: $VERSION"
-      # - name: Dry-run publish to Open VSX Registry
-      #   uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
-      #   with:
-      #     pat: ${{ secrets.OPEN_VSX_TOKEN }}
-      #     dryRun: true
-      - name: Dry-run publish to Visual Studio Marketplace
-        if: env.VS_MARKETPLACE_TOKEN != ''
+      - name: Dry-run publish to Open VSX Registry
+        if: env.OPEN_VSX_TOKEN != ''
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
-          pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-          registryUrl: https://marketplace.visualstudio.com
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
           dryRun: true
 
   publish-vscode-extension:
@@ -67,6 +61,8 @@ jobs:
     needs:
       - build
       - check-release
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -96,14 +92,12 @@ jobs:
       - name: Get VSIX path
         id: vsix
         run: echo "path=$(ls *.vsix | head -1)" >> $GITHUB_OUTPUT
-      # - name: Publish to Open VSX Registry
-      #   uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
-      #   with:
-      #     pat: ${{ secrets.OPEN_VSX_TOKEN }}
-      #     extensionFile: ${{ steps.vsix.outputs.path }}
-      - name: Publish to Visual Studio Marketplace
+      - name: Publish to Open VSX Registry
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
         with:
-          pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-          registryUrl: https://marketplace.visualstudio.com
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
           extensionFile: ${{ steps.vsix.outputs.path }}
+      - name: Upload VSIX to GitHub Release
+        run: gh release upload "${{ github.ref_name }}" "${{ steps.vsix.outputs.path }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
