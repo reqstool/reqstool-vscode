@@ -1,4 +1,4 @@
-name: Publish to Open VSX Registry
+name: Publish VS Code Extension
 
 on:
   push:
@@ -9,95 +9,43 @@ on:
   workflow_dispatch:
     inputs:
       reqstool_version:
-        description: 'reqstool version to pin in extension (empty = latest)'
+        description: "reqstool version to pin in extension (empty = latest)"
         required: false
-        default: ''
+        default: ""
         type: string
 
 jobs:
   check-release:
-    name: Reuse check release
     if: github.event_name == 'release'
-    uses: ./.github/workflows/check_release.yml
+    uses: reqstool/.github/.github/workflows/common/check-release.yml@main
+    with:
+      version-format: semver
 
   build:
-    name: Reuse build
     uses: ./.github/workflows/build.yml
     with:
       reqstool_version: ${{ inputs.reqstool_version || '' }}
 
   dry-run:
-    # Validates packaging and PAT token without uploading.
-    # Runs on push to main and workflow_dispatch only — not on release publishes.
-    # Skips the publish step when OPEN_VSX_TOKEN is not yet configured.
-    name: Dry-run publish (skipped if token absent)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    env:
-      OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - run: npm ci
-      - name: Pin reqstool version
-        if: ${{ inputs.reqstool_version != '' }}
-        run: npm pkg set reqstoolVersion="${{ inputs.reqstool_version }}"
-      - name: Log effective reqstool version
-        run: |
-          VERSION=$(node -p "require('./package.json').reqstoolVersion || '(latest)'")
-          echo "reqstoolVersion: $VERSION"
-      - name: Dry-run publish to Open VSX Registry
-        if: env.OPEN_VSX_TOKEN != ''
-        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
-        with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          dryRun: true
-
-  publish-vscode-extension:
-    name: Publish extension
-    if: github.event_name == 'release'
-    needs:
-      - build
-      - check-release
+    needs: [build]
+    uses: reqstool/.github/.github/workflows/typescript/publish-to-vscode.yml@main
+    with:
+      dry-run: true
+      dependency-name: reqstoolVersion
+      dependency-version: ${{ inputs.reqstool_version || '' }}
+    secrets: inherit
     permissions:
       contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-tags: true
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      - run: npm ci
-      - name: Pin reqstool version
-        if: ${{ inputs.reqstool_version != '' }}
-        run: npm pkg set reqstoolVersion="${{ inputs.reqstool_version }}"
-      - name: Log effective reqstool version
-        run: |
-          VERSION=$(node -p "require('./package.json').reqstoolVersion || '(latest)'")
-          echo "reqstoolVersion: $VERSION"
-      - name: Verify version from git tag
-        run: |
-          VERSION=$(node scripts/get-version.mjs)
-          if [ "$VERSION" = "0.0.0-dev" ]; then
-            echo "ERROR: could not derive version from git tag — ensure the tag exists and fetch-tags is enabled"
-            exit 1
-          fi
-          echo "Publishing version: $VERSION"
-      - name: Build versioned VSIX
-        run: npm run build
-      - name: Get VSIX path
-        id: vsix
-        run: echo "path=$(ls *.vsix | head -1)" >> $GITHUB_OUTPUT
-      - name: Publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2.0.0
-        with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          extensionFile: ${{ steps.vsix.outputs.path }}
-      - name: Upload VSIX to GitHub Release
-        run: gh release upload "${{ github.ref_name }}" "${{ steps.vsix.outputs.path }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    if: github.event_name == 'release'
+    needs: [check-release, build]
+    uses: reqstool/.github/.github/workflows/typescript/publish-to-vscode.yml@main
+    with:
+      dry-run: false
+      dependency-name: reqstoolVersion
+      dependency-version: ${{ inputs.reqstool_version || '' }}
+    secrets: inherit
+    permissions:
+      contents: write

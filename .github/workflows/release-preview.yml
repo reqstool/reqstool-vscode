@@ -1,0 +1,12 @@
+name: Release Preview
+
+on:
+  workflow_dispatch:
+
+jobs:
+  preview:
+    uses: reqstool/.github/.github/workflows/common/release-preview.yml@main
+    with:
+      version-command: 'node -p "require(''./package.json'').version"'
+    permissions:
+      contents: read

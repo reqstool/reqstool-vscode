@@ -1,36 +1,38 @@
-import typescriptEslint from '@typescript-eslint/eslint-plugin'
-import tsParser from '@typescript-eslint/parser'
+import typescriptEslint from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+import prettier from "eslint-config-prettier";
 
 export default [
-    {
-        files: ['**/*.ts'],
-        ignores: ['**/out', '**/dist', '**/*.d.ts'],
+  {
+    files: ["**/*.ts"],
+    ignores: ["**/out", "**/dist", "**/*.d.ts"],
+  },
+  {
+    plugins: {
+      "@typescript-eslint": typescriptEslint,
     },
-    {
-        plugins: {
-            '@typescript-eslint': typescriptEslint,
-        },
 
-        languageOptions: {
-            parser: tsParser,
-            ecmaVersion: 6,
-            sourceType: 'module',
-        },
-
-        rules: {
-            '@typescript-eslint/naming-convention': [
-                'warn',
-                {
-                    selector: 'import',
-                    format: ['camelCase', 'PascalCase'],
-                },
-            ],
-
-            '@typescript-eslint/semi': 'off',
-            curly: 'warn',
-            eqeqeq: 'warn',
-            'no-throw-literal': 'warn',
-            semi: 'off',
-        },
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: 6,
+      sourceType: "module",
     },
-]
+
+    rules: {
+      "@typescript-eslint/naming-convention": [
+        "warn",
+        {
+          selector: "import",
+          format: ["camelCase", "PascalCase"],
+        },
+      ],
+
+      "@typescript-eslint/semi": "off",
+      curly: "warn",
+      eqeqeq: "warn",
+      "no-throw-literal": "warn",
+      semi: "off",
+    },
+  },
+  prettier,
+];
