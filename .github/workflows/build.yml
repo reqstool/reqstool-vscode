@@ -1,5 +1,7 @@
 name: Build VS Code extension
 
+permissions: {}
+
 on:
   workflow_call:
     inputs:
