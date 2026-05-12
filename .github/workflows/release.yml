@@ -10,7 +10,7 @@ on:
 
 jobs:
   release:
-    uses: reqstool/.github/.github/workflows/common/release.yml@main
+    uses: reqstool/.github/.github/workflows/common-release.yml@main
     with:
       version: ${{ inputs.version }}
       version-format: semver
