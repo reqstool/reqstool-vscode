@@ -28,11 +28,11 @@ on:
 
 jobs:
   lint:
-    uses: reqstool/.github/.github/workflows/typescript/lint.yml@main
+    uses: reqstool/.github/.github/workflows/typescript-lint.yml@main
 
   build:
     needs: lint
-    uses: reqstool/.github/.github/workflows/typescript/build.yml@main
+    uses: reqstool/.github/.github/workflows/typescript-build.yml@main
     with:
       use-xvfb: true
       dependency-version: ${{ inputs.reqstool_version || 'latest' }}
