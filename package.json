@@ -12,7 +12,7 @@
     "url": "https://github.com/reqstool/reqstool-vscode"
   },
   "engines": {
-    "vscode": "^1.118.0"
+    "vscode": "^1.120.0"
   },
   "categories": [
     "Linters",
