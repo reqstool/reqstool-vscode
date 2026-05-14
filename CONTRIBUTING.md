@@ -180,4 +180,4 @@ The draft is the review gate — the marketplace publish only happens after you 
 | Release published (via draft approval) |       ✓       |   ✓   |         |    ✓    |
 | `workflow_dispatch`                    |               |   ✓   |    ✓    |         |
 
-Requires the `VS_MARKETPLACE_TOKEN` secret (and `OPEN_VSX_TOKEN` when Open VSX publishing is enabled) to be configured in the repository.
+Requires the `VSCE_PAT` secret to be configured in the repository.
