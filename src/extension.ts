@@ -454,10 +454,15 @@ async function ensureManagedVenv(
   const envDir = path.join(context.globalStorageUri.fsPath, "env");
   const reqstoolBin = getManagedBinPath(context);
 
-  // Invalidate venv on extension version upgrade
+  // Invalidate venv when the extension version or the pinned reqstool version changes
   const storedVersion = context.globalState.get<string>("envVersion");
+  const storedReqstoolVersion = context.globalState.get<string>("envReqstoolVersion");
   const currentVersion = context.extension.packageJSON.version as string;
-  if (storedVersion !== currentVersion && fs.existsSync(envDir)) {
+  const currentReqstoolVersion = (context.extension.packageJSON.reqstoolVersion as string | undefined) ?? "";
+  if (
+    (storedVersion !== currentVersion || storedReqstoolVersion !== currentReqstoolVersion) &&
+    fs.existsSync(envDir)
+  ) {
     await fs.promises.rm(envDir, { recursive: true });
   }
 
@@ -498,6 +503,7 @@ async function ensureManagedVenv(
         },
       );
       await context.globalState.update("envVersion", currentVersion);
+      await context.globalState.update("envReqstoolVersion", currentReqstoolVersion);
     } catch {
       return undefined;
     }
