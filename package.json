@@ -56,11 +56,6 @@
       "reqstool": [
         {
           "type": "webview",
-          "id": "reqstool.filterView",
-          "name": "Filter",
-          "visibility": "visible"
-        },
-        {
           "id": "reqstool.outlineView",
           "name": "Outline"
         },

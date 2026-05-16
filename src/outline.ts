@@ -16,53 +16,61 @@ type ListData = {
   mvrs: { id: string; passed: boolean }[];
 };
 
-type SectionNode = {
-  kind: "section";
-  type: "requirement" | "svc" | "mvr";
-  label: string;
-};
-type ItemNode = {
-  kind: "item";
-  id: string;
-  label: string;
-  type: "requirement" | "svc" | "mvr";
-  icon: string;
-};
-type OutlineNode = SectionNode | ItemNode;
+// ── Outline WebviewView ───────────────────────────────────────────────────────
 
-function lifecycleIcon(state: string | undefined): string {
-  const s = (state ?? "").toLowerCase();
-  if (s.includes("effective") || s.includes("active")) {
-    return "pass-filled";
-  }
-  if (s.includes("draft")) {
-    return "circle-outline";
-  }
-  if (s.includes("deprecated")) {
-    return "warning";
-  }
-  if (s.includes("obsolete")) {
-    return "error";
-  }
-  return "circle-outline";
-}
+export class OutlineProvider implements vscode.WebviewViewProvider {
+  static readonly viewId = "reqstool.outlineView";
 
-// ── Filter input WebviewView ──────────────────────────────────────────────────
+  private _view?: vscode.WebviewView;
+  private _scope: Scope = "project";
+  private _activeUri: vscode.Uri | undefined;
 
-export class OutlineFilterProvider implements vscode.WebviewViewProvider {
-  static readonly viewId = "reqstool.filterView";
-
-  private _onFilter = new vscode.EventEmitter<string>();
-  readonly onFilter = this._onFilter.event;
+  constructor(private readonly _client: LanguageClient) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this._view = webviewView;
     webviewView.webview.options = { enableScripts: true };
     webviewView.webview.html = this._html();
-    webviewView.webview.onDidReceiveMessage((msg) => {
-      if (msg.command === "filter") {
-        this._onFilter.fire(msg.query ?? "");
+    webviewView.webview.onDidReceiveMessage(async (msg) => {
+      if (msg.command === "openDetails") {
+        await vscode.commands.executeCommand("reqstool.openDetails", {
+          id: msg.id,
+          type: msg.type,
+        });
       }
     });
+    webviewView.onDidChangeVisibility(() => {
+      if (webviewView.visible) void this._refresh();
+    });
+    void this._refresh();
+  }
+
+  setScope(scope: Scope): void {
+    this._scope = scope;
+    void vscode.commands.executeCommand(
+      "setContext",
+      "reqstool.outlineScope",
+      scope,
+    );
+    void this._refresh();
+  }
+
+  refresh(): void {
+    void this._refresh();
+  }
+
+  onEditorChange(editor: vscode.TextEditor | undefined): void {
+    if (this._scope !== "file") return;
+    this._activeUri = editor?.document.uri;
+    void this._refresh();
+  }
+
+  private async _refresh(): Promise<void> {
+    if (!this._view?.visible) return;
+    this._view.webview.postMessage({ type: "loading" });
+    const data = await this._loadData();
+    if (!this._view?.visible) return;
+    this._view.webview.postMessage({ type: "data", data, scope: this._scope });
   }
 
   private _html(): string {
@@ -70,198 +78,236 @@ export class OutlineFilterProvider implements vscode.WebviewViewProvider {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
-    background: var(--vscode-sideBar-background);
-    padding: 4px 8px;
-    display: flex; align-items: center; gap: 4px;
-  }
-  input {
-    flex: 1; background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border, transparent);
-    border-radius: 2px; padding: 3px 6px;
     font-family: var(--vscode-font-family);
     font-size: var(--vscode-font-size);
+    color: var(--vscode-foreground);
+    background: transparent;
+    overflow-x: hidden;
+  }
+
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    position: sticky;
+    top: 0;
+    background: var(--vscode-sideBar-background, var(--vscode-panel-background));
+    border-bottom: 1px solid var(--vscode-panel-border, transparent);
+    z-index: 10;
+  }
+  input {
+    flex: 1;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 2px;
+    padding: 3px 6px;
+    font-family: inherit;
+    font-size: inherit;
     outline: none;
+    min-width: 0;
   }
   input:focus { border-color: var(--vscode-focusBorder); }
   input::placeholder { color: var(--vscode-input-placeholderForeground); }
   button {
-    cursor: pointer; background: none; border: none;
-    color: var(--vscode-foreground); opacity: 0.5;
-    font-size: 13px; padding: 0 2px; line-height: 1;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--vscode-foreground);
+    opacity: 0.6;
+    font-size: 13px;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
   }
   button:hover { opacity: 1; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+    background: var(--vscode-sideBarSectionHeader-background, transparent);
+    user-select: none;
+  }
+  .section-header:hover { background: var(--vscode-list-hoverBackground); }
+  .toggle { font-size: 10px; width: 12px; display: inline-block; }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px 2px 24px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item:hover { background: var(--vscode-list-hoverBackground); }
+  .item:active { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot.pass    { background: var(--vscode-testing-iconPassed, #73c991); }
+  .dot.draft   { border: 1.5px solid currentColor; background: transparent; opacity: 0.6; }
+  .dot.warning { background: var(--vscode-editorWarning-foreground, #cca700); }
+  .dot.error   { background: var(--vscode-editorError-foreground, #f14c4c); }
+
+  .item-label { overflow: hidden; text-overflow: ellipsis; }
+
+  .message {
+    padding: 8px;
+    opacity: 0.6;
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
-<input id="f" type="text" placeholder="Filter (e.g. WEB, CLI, port)" autocomplete="off" spellcheck="false">
-<button id="x" hidden title="Clear">✕</button>
+<div class="filter-bar">
+  <input id="filter" type="text" placeholder="Filter (e.g. WEB, CLI, port)" autocomplete="off" spellcheck="false">
+  <button id="clear" hidden title="Clear filter">✕</button>
+</div>
+<div id="list"><div class="message">Loading…</div></div>
 <script>
-const vscode = acquireVsCodeApi();
-const f = document.getElementById('f');
-const x = document.getElementById('x');
-let t;
-f.addEventListener('input', () => {
-    x.hidden = !f.value;
-    clearTimeout(t);
-    t = setTimeout(() => vscode.postMessage({ command: 'filter', query: f.value }), 150);
-});
-x.addEventListener('click', () => {
-    f.value = ''; x.hidden = true;
-    vscode.postMessage({ command: 'filter', query: '' });
-    f.focus();
-});
+(function() {
+  const vscode = acquireVsCodeApi();
+  const listEl = document.getElementById('list');
+  const filterEl = document.getElementById('filter');
+  const clearBtn = document.getElementById('clear');
+
+  let allData = null;
+
+  // ── Messaging ──────────────────────────────────────────────────────────────
+  window.addEventListener('message', e => {
+    const msg = e.data;
+    if (msg.type === 'loading') {
+      listEl.innerHTML = '<div class="message">Loading…</div>';
+    } else if (msg.type === 'data') {
+      allData = msg.data;
+      render();
+    }
+  });
+
+  // ── Filter ─────────────────────────────────────────────────────────────────
+  filterEl.addEventListener('input', () => {
+    clearBtn.hidden = !filterEl.value;
+    render();
+  });
+  clearBtn.addEventListener('click', () => {
+    filterEl.value = '';
+    clearBtn.hidden = true;
+    render();
+    filterEl.focus();
+  });
+
+  function getFilter() { return filterEl.value.trim().toLowerCase(); }
+  function match(id, title) {
+    const f = getFilter();
+    return !f || id.toLowerCase().includes(f) || (title || '').toLowerCase().includes(f);
+  }
+
+  // ── Rendering ──────────────────────────────────────────────────────────────
+  function escAttr(s) { return s.replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function dotHtml(cls) {
+    return '<span class="dot ' + cls + '"></span>';
+  }
+
+  function lifecycleIcon(state) {
+    const s = (state || '').toLowerCase();
+    if (s.includes('effective') || s.includes('active')) return 'pass';
+    if (s.includes('draft')) return 'draft';
+    if (s.includes('deprecated')) return 'warning';
+    if (s.includes('obsolete')) return 'error';
+    return 'draft';
+  }
+
+  function renderSection(type, label, items) {
+    const bodyId = 'sec-' + type;
+    const rows = items.length === 0
+      ? '<div class="message">No items</div>'
+      : items.map(item => {
+          const isReq = type === 'requirement', isSvc = type === 'svc', isMvr = type === 'mvr';
+          const icon = isMvr ? (item.passed ? 'pass' : 'error') : lifecycleIcon(item.lifecycle_state);
+          const lbl = isMvr ? item.id : item.id + ': ' + item.title;
+          return '<div class="item" data-id="' + escAttr(item.id) + '" data-type="' + type + '">'
+            + dotHtml(icon)
+            + '<span class="item-label">' + escHtml(lbl) + '</span>'
+            + '</div>';
+        }).join('');
+
+    return '<div class="section">'
+      + '<div class="section-header" data-section="' + type + '">'
+      + '<span class="toggle">▾</span>' + escHtml(label)
+      + '</div>'
+      + '<div class="section-body" id="' + bodyId + '">' + rows + '</div>'
+      + '</div>';
+  }
+
+  function render() {
+    if (!allData) { listEl.innerHTML = '<div class="message">No data</div>'; return; }
+    const f = getFilter();
+    const reqs = allData.requirements.filter(r => match(r.id, r.title));
+    const svcs = allData.svcs.filter(s => match(s.id, s.title));
+    const mvrs = allData.mvrs.filter(m => match(m.id));
+    const lbl = (name, shown, total) => f ? name + ' (' + shown + ' / ' + total + ')' : name + ' (' + total + ')';
+    listEl.innerHTML =
+      renderSection('requirement', lbl('Requirements', reqs.length, allData.requirements.length), reqs) +
+      renderSection('svc', lbl('SVCs', svcs.length, allData.svcs.length), svcs) +
+      renderSection('mvr', lbl('MVRs', mvrs.length, allData.mvrs.length), mvrs);
+    restoreCollapsed();
+  }
+
+  // ── Collapse state ─────────────────────────────────────────────────────────
+  const collapsed = new Set();
+
+  function restoreCollapsed() {
+    collapsed.forEach(type => {
+      const body = document.getElementById('sec-' + type);
+      const header = listEl.querySelector('[data-section="' + type + '"]');
+      if (body) body.style.display = 'none';
+      if (header) header.querySelector('.toggle').textContent = '▸';
+    });
+  }
+
+  // ── Clicks ─────────────────────────────────────────────────────────────────
+  listEl.addEventListener('click', e => {
+    const header = e.target.closest('.section-header');
+    if (header) {
+      const type = header.dataset.section;
+      const body = document.getElementById('sec-' + type);
+      const toggle = header.querySelector('.toggle');
+      if (body) {
+        const isCollapsed = body.style.display === 'none';
+        body.style.display = isCollapsed ? '' : 'none';
+        toggle.textContent = isCollapsed ? '▾' : '▸';
+        if (isCollapsed) collapsed.delete(type); else collapsed.add(type);
+      }
+      return;
+    }
+    const item = e.target.closest('.item[data-id]');
+    if (item) {
+      vscode.postMessage({ command: 'openDetails', id: item.dataset.id, type: item.dataset.type });
+    }
+  });
+})();
 </script>
 </body>
 </html>`;
-  }
-}
-
-// ── Outline TreeDataProvider ──────────────────────────────────────────────────
-
-export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<void>();
-  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
-
-  private _scope: Scope = "project";
-  private _cache: ListData | undefined;
-  private _activeUri: vscode.Uri | undefined;
-  private _filter = "";
-
-  constructor(private readonly _client: LanguageClient) {}
-
-  setScope(scope: Scope): void {
-    this._scope = scope;
-    vscode.commands.executeCommand(
-      "setContext",
-      "reqstool.outlineScope",
-      scope,
-    );
-    this.refresh();
-  }
-
-  setFilter(query: string): void {
-    this._filter = query.trim().toLowerCase();
-    this._onDidChangeTreeData.fire();
-  }
-
-  onEditorChange(editor: vscode.TextEditor | undefined): void {
-    if (this._scope !== "file") {
-      return;
-    }
-    this._activeUri = editor?.document.uri;
-    this.refresh();
-  }
-
-  refresh(): void {
-    this._cache = undefined;
-    this._onDidChangeTreeData.fire();
-  }
-
-  getTreeItem(node: OutlineNode): vscode.TreeItem {
-    if (node.kind === "section") {
-      const item = new vscode.TreeItem(
-        node.label,
-        vscode.TreeItemCollapsibleState.Expanded,
-      );
-      item.contextValue = "reqstoolSection";
-      return item;
-    }
-    const item = new vscode.TreeItem(
-      node.label,
-      vscode.TreeItemCollapsibleState.None,
-    );
-    item.iconPath = new vscode.ThemeIcon(node.icon);
-    item.command = {
-      command: "reqstool.openDetails",
-      title: "Open Details",
-      arguments: [{ id: node.id, type: node.type }],
-    };
-    item.tooltip = node.id;
-    return item;
-  }
-
-  async getChildren(node?: OutlineNode): Promise<OutlineNode[]> {
-    if (node?.kind === "item") {
-      return [];
-    }
-
-    if (!this._cache) {
-      this._cache = await this._loadData();
-    }
-    const data = this._cache;
-    if (!data) {
-      return [];
-    }
-
-    const f = this._filter;
-    const match = (id: string, title?: string) =>
-      !f ||
-      id.toLowerCase().includes(f) ||
-      (title ?? "").toLowerCase().includes(f);
-
-    if (!node) {
-      const reqs = data.requirements.filter((r) => match(r.id, r.title));
-      const svcs = data.svcs.filter((s) => match(s.id, s.title));
-      const mvrs = data.mvrs.filter((m) => match(m.id));
-      const lbl = (name: string, shown: number, total: number) =>
-        f ? `${name} (${shown} / ${total})` : `${name} (${total})`;
-      return [
-        {
-          kind: "section",
-          type: "requirement",
-          label: lbl("Requirements", reqs.length, data.requirements.length),
-        },
-        {
-          kind: "section",
-          type: "svc",
-          label: lbl("SVCs", svcs.length, data.svcs.length),
-        },
-        {
-          kind: "section",
-          type: "mvr",
-          label: lbl("MVRs", mvrs.length, data.mvrs.length),
-        },
-      ];
-    }
-
-    if (node.type === "requirement") {
-      return data.requirements
-        .filter((r) => match(r.id, r.title))
-        .map((r) => ({
-          kind: "item" as const,
-          id: r.id,
-          type: "requirement" as const,
-          label: `${r.id}: ${r.title}`,
-          icon: lifecycleIcon(r.lifecycle_state),
-        }));
-    }
-    if (node.type === "svc") {
-      return data.svcs
-        .filter((s) => match(s.id, s.title))
-        .map((s) => ({
-          kind: "item" as const,
-          id: s.id,
-          type: "svc" as const,
-          label: `${s.id}: ${s.title}`,
-          icon: lifecycleIcon(s.lifecycle_state),
-        }));
-    }
-    if (node.type === "mvr") {
-      return data.mvrs
-        .filter((m) => match(m.id))
-        .map((m) => ({
-          kind: "item" as const,
-          id: m.id,
-          type: "mvr" as const,
-          label: m.id,
-          icon: m.passed ? "pass-filled" : "error",
-        }));
-    }
-    return [];
   }
 
   private async _loadData(): Promise<ListData | undefined> {
