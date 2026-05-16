@@ -18,14 +18,6 @@
       depNameTemplate: "reqstool",
       datasourceTemplate: "pypi",
     },
-    {
-      // Keep the minimum version note in README in sync with the bundled reqstool version.
-      customType: "regex",
-      fileMatch: ["^README\\.md$"],
-      matchStrings: ["reqstool (?<currentValue>[\\d.]+) or later"],
-      depNameTemplate: "reqstool",
-      datasourceTemplate: "pypi",
-    },
   ],
 
   packageRules: [
