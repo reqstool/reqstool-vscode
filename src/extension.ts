@@ -245,7 +245,11 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   const outlineProvider = new OutlineProvider(client);
-  void vscode.commands.executeCommand("setContext", "reqstool.outlineScope", "project");
+  void vscode.commands.executeCommand(
+    "setContext",
+    "reqstool.outlineScope",
+    "project",
+  );
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       OutlineProvider.viewId,
