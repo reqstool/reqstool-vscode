@@ -1,6 +1,6 @@
 {
   "name": "reqstool",
-  "displayName": "reqstool",
+  "displayName": "reqstool Support",
   "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
   "version": "0.0.0-dev",
   "reqstoolVersion": "0.8.0",

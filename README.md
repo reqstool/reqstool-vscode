@@ -30,7 +30,7 @@ This extension is available on the **[Visual Studio Marketplace](https://marketp
 
 ### VS Code
 
-Search for **reqstool** in the Extensions panel and install directly, or run:
+Search for **reqstool Support** in the Extensions panel and install directly, or run:
 
 ```
 ext install reqstool.reqstool
