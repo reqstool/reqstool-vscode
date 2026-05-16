@@ -1,4 +1,4 @@
-# reqstool — VS Code Extension
+# reqstool - VS Code Support
 
 VS Code extension for [reqstool](https://reqstool.github.io), providing full Language Server Protocol (LSP) integration for requirements traceability.
 
@@ -132,7 +132,7 @@ The LSP server provides hover, completion, go-to-definition, and diagnostics for
 ## Requirements
 
 - VS Code 1.109.0 or later
-- Python (`python3` or `python`) on your `PATH` for auto-install — or configure `reqstool.serverCommand` to point to an existing installation
+- reqstool is either bundled with the extension (requires Python on `PATH` for a one-time install) or can be provided as a system installation on `PATH`. Use **reqstool: Select Server Source** to choose.
 
 ## Troubleshooting
 
@@ -144,7 +144,7 @@ The LSP server provides hover, completion, go-to-definition, and diagnostics for
 
 **Extension warns that the system reqstool is too old**
 
-- The extension requires reqstool 0.8.0 or later.
+- The extension requires reqstool 0.11.0 or later.
 - Upgrade with `pipx upgrade reqstool`, or run **reqstool: Select Server Source** and choose **Packaged with extension** to use the bundled version instead.
 
 **Enable LSP tracing**
