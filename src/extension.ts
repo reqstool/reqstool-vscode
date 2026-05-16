@@ -11,7 +11,7 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 import { DetailsViewProvider } from "./details.js";
-import { OutlineProvider, OutlineFilterProvider } from "./outline.js";
+import { OutlineProvider } from "./outline.js";
 
 let client: LanguageClient | undefined;
 
@@ -245,25 +245,17 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   const outlineProvider = new OutlineProvider(client);
-  const filterProvider = new OutlineFilterProvider();
-  vscode.commands.executeCommand(
+  void vscode.commands.executeCommand(
     "setContext",
     "reqstool.outlineScope",
     "project",
   );
   context.subscriptions.push(
-    filterProvider.onFilter((q) => outlineProvider.setFilter(q)),
     vscode.window.registerWebviewViewProvider(
-      OutlineFilterProvider.viewId,
-      filterProvider,
-      {
-        webviewOptions: { retainContextWhenHidden: true },
-      },
+      OutlineProvider.viewId,
+      outlineProvider,
+      { webviewOptions: { retainContextWhenHidden: true } },
     ),
-    vscode.window.createTreeView("reqstool.outlineView", {
-      treeDataProvider: outlineProvider,
-      showCollapseAll: true,
-    }),
     vscode.commands.registerCommand("reqstool.outline.scopeProject", () =>
       outlineProvider.setScope("project"),
     ),
