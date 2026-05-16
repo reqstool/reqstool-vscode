@@ -10,12 +10,24 @@
       depNameTemplate: "@types/vscode",
       datasourceTemplate: "npm",
     },
+    {
+      // Track reqstoolVersion against the PyPI reqstool package.
+      customType: "regex",
+      fileMatch: ["^package\\.json$"],
+      matchStrings: ['"reqstoolVersion":\\s*"(?<currentValue>[\\d.]+)"'],
+      depNameTemplate: "reqstool",
+      datasourceTemplate: "pypi",
+    },
   ],
 
   packageRules: [
     {
       matchDepNames: ["@types/vscode"],
       groupName: "vscode engine",
+    },
+    {
+      matchDepNames: ["reqstool"],
+      groupName: "reqstool",
     },
   ],
 }
