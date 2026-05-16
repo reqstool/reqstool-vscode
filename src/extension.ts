@@ -11,7 +11,7 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 import { DetailsViewProvider } from "./details.js";
-import { OutlineProvider, OutlineFilterProvider } from "./outline.js";
+import { OutlineProvider } from "./outline.js";
 
 let client: LanguageClient | undefined;
 
@@ -245,21 +245,8 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   const outlineProvider = new OutlineProvider(client);
-  const filterProvider = new OutlineFilterProvider();
-  vscode.commands.executeCommand(
-    "setContext",
-    "reqstool.outlineScope",
-    "project",
-  );
+  vscode.commands.executeCommand("setContext", "reqstool.outlineScope", "project");
   context.subscriptions.push(
-    filterProvider.onFilter((q) => outlineProvider.setFilter(q)),
-    vscode.window.registerWebviewViewProvider(
-      OutlineFilterProvider.viewId,
-      filterProvider,
-      {
-        webviewOptions: { retainContextWhenHidden: true },
-      },
-    ),
     vscode.window.createTreeView("reqstool.outlineView", {
       treeDataProvider: outlineProvider,
       showCollapseAll: true,
@@ -270,6 +257,29 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("reqstool.outline.scopeFile", () =>
       outlineProvider.setScope("file"),
     ),
+    vscode.commands.registerCommand("reqstool.outline.filter", async () => {
+      const result = await vscode.window.showInputBox({
+        prompt: "Filter outline (leave empty to clear)",
+        value: outlineProvider.currentFilter,
+        placeHolder: "e.g. WEB, CLI, port",
+      });
+      if (result !== undefined) {
+        outlineProvider.setFilter(result);
+        await vscode.commands.executeCommand(
+          "setContext",
+          "reqstool.outlineFilterActive",
+          result.trim().length > 0,
+        );
+      }
+    }),
+    vscode.commands.registerCommand("reqstool.outline.clearFilter", async () => {
+      outlineProvider.setFilter("");
+      await vscode.commands.executeCommand(
+        "setContext",
+        "reqstool.outlineFilterActive",
+        false,
+      );
+    }),
     vscode.window.onDidChangeActiveTextEditor((e) =>
       outlineProvider.onEditorChange(e),
     ),

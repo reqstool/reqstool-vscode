@@ -47,79 +47,6 @@ function lifecycleIcon(state: string | undefined): string {
   return "circle-outline";
 }
 
-// ── Filter input WebviewView ──────────────────────────────────────────────────
-
-export class OutlineFilterProvider implements vscode.WebviewViewProvider {
-  static readonly viewId = "reqstool.filterView";
-
-  private _onFilter = new vscode.EventEmitter<string>();
-  readonly onFilter = this._onFilter.event;
-
-  resolveWebviewView(webviewView: vscode.WebviewView): void {
-    webviewView.webview.options = { enableScripts: true };
-    webviewView.webview.html = this._html();
-    webviewView.webview.onDidReceiveMessage((msg) => {
-      if (msg.command === "filter") {
-        this._onFilter.fire(msg.query ?? "");
-      }
-    });
-  }
-
-  private _html(): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--vscode-sideBar-background);
-    padding: 4px 8px;
-    display: flex; align-items: center; gap: 4px;
-  }
-  input {
-    flex: 1; background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border, transparent);
-    border-radius: 2px; padding: 3px 6px;
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-    outline: none;
-  }
-  input:focus { border-color: var(--vscode-focusBorder); }
-  input::placeholder { color: var(--vscode-input-placeholderForeground); }
-  button {
-    cursor: pointer; background: none; border: none;
-    color: var(--vscode-foreground); opacity: 0.5;
-    font-size: 13px; padding: 0 2px; line-height: 1;
-  }
-  button:hover { opacity: 1; }
-</style>
-</head>
-<body>
-<input id="f" type="text" placeholder="Filter (e.g. WEB, CLI, port)" autocomplete="off" spellcheck="false">
-<button id="x" hidden title="Clear">✕</button>
-<script>
-const vscode = acquireVsCodeApi();
-const f = document.getElementById('f');
-const x = document.getElementById('x');
-let t;
-f.addEventListener('input', () => {
-    x.hidden = !f.value;
-    clearTimeout(t);
-    t = setTimeout(() => vscode.postMessage({ command: 'filter', query: f.value }), 150);
-});
-x.addEventListener('click', () => {
-    f.value = ''; x.hidden = true;
-    vscode.postMessage({ command: 'filter', query: '' });
-    f.focus();
-});
-</script>
-</body>
-</html>`;
-  }
-}
-
 // ── Outline TreeDataProvider ──────────────────────────────────────────────────
 
 export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
@@ -141,6 +68,10 @@ export class OutlineProvider implements vscode.TreeDataProvider<OutlineNode> {
       scope,
     );
     this.refresh();
+  }
+
+  get currentFilter(): string {
+    return this._filter;
   }
 
   setFilter(query: string): void {

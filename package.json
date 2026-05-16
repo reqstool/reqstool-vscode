@@ -55,12 +55,6 @@
     "views": {
       "reqstool": [
         {
-          "type": "webview",
-          "id": "reqstool.filterView",
-          "name": "Filter",
-          "visibility": "visible"
-        },
-        {
           "id": "reqstool.outlineView",
           "name": "Outline"
         },
@@ -101,6 +95,16 @@
         "command": "reqstool.outline.scopeFile",
         "title": "Show current file",
         "icon": "$(file-code)"
+      },
+      {
+        "command": "reqstool.outline.filter",
+        "title": "Filter",
+        "icon": "$(search)"
+      },
+      {
+        "command": "reqstool.outline.clearFilter",
+        "title": "Clear filter",
+        "icon": "$(clear-all)"
       }
     ],
     "menus": {
@@ -116,6 +120,14 @@
         {
           "command": "reqstool.outline.scopeFile",
           "when": "false"
+        },
+        {
+          "command": "reqstool.outline.filter",
+          "when": "false"
+        },
+        {
+          "command": "reqstool.outline.clearFilter",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -127,6 +139,16 @@
         {
           "command": "reqstool.outline.scopeFile",
           "when": "view == reqstool.outlineView && reqstool.outlineScope == 'project'",
+          "group": "navigation"
+        },
+        {
+          "command": "reqstool.outline.clearFilter",
+          "when": "view == reqstool.outlineView && reqstool.outlineFilterActive",
+          "group": "navigation"
+        },
+        {
+          "command": "reqstool.outline.filter",
+          "when": "view == reqstool.outlineView",
           "group": "navigation"
         }
       ]

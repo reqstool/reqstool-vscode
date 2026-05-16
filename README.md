@@ -1,4 +1,4 @@
-# reqstool — VS Code Extension
+# reqstool - VS Code Support
 
 VS Code extension for [reqstool](https://reqstool.github.io), providing full Language Server Protocol (LSP) integration for requirements traceability.
 
