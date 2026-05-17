@@ -34,7 +34,7 @@ jobs:
     uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@main
     with:
       dry-run: true
-      registries: vscode-marketplace
+      registries: open-vsx,vscode-marketplace
       dependency-name: reqstoolVersion
       dependency-version: ${{ inputs.reqstool_version || '' }}
     secrets: inherit
@@ -47,7 +47,7 @@ jobs:
     uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@main
     with:
       dry-run: false
-      registries: vscode-marketplace
+      registries: open-vsx,vscode-marketplace
       dependency-name: reqstoolVersion
       dependency-version: ${{ inputs.reqstool_version || '' }}
     secrets: inherit
