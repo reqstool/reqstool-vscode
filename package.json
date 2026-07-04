@@ -212,7 +212,7 @@
     }
   },
   "dependencies": {
-    "vscode-languageclient": "10.0.1"
+    "vscode-languageclient": "10.1.0"
   },
   "devDependencies": {
     "@types/mocha": "10.0.10",
