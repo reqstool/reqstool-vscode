@@ -186,9 +186,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const clientOptions: LanguageClientOptions = {
     documentSelector: cfg
-      .get<
-        string[]
-      >("languages", ["python", "java", "javascript", "typescript", "javascriptreact", "typescriptreact", "yaml"])
+      .get<string[]>("languages", [
+        "python",
+        "java",
+        "javascript",
+        "typescript",
+        "javascriptreact",
+        "typescriptreact",
+        "yaml",
+      ])
       .map((lang) => ({ scheme: "file", language: lang })),
     synchronize: {
       fileEvents: vscode.workspace.createFileSystemWatcher(

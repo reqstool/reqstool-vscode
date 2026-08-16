@@ -362,8 +362,7 @@ export class OutlineProvider implements vscode.WebviewViewProvider {
     const svcIds = new Set<string>();
     for (const lens of lenses) {
       const args = lens.command?.arguments?.[0] as
-        | { ids?: string[]; type?: string }
-        | undefined;
+        { ids?: string[]; type?: string } | undefined;
       if (!args?.ids || !args?.type) {
         continue;
       }
