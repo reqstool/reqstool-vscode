@@ -72,6 +72,7 @@ jobs:
       contents: write
     with:
       version: ${{ needs.prepare.outputs.version }}
+      version-format: semver
       ref: ${{ inputs.ref }}
 
   # Rebuilt from the tag. npm has no equivalent of hatch-vcs, so `version` is
