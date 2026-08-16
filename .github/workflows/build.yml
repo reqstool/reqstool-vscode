@@ -45,11 +45,19 @@ on:
       - synchronize
 
 jobs:
+  # `permissions: {}` above grants the jobs nothing, and a called workflow may
+  # not request more than its caller was granted -- asking for more is rejected
+  # before any job runs, with no check run produced to say so. Both callees
+  # declare `contents: read`, so both callers have to grant it.
   lint:
+    permissions:
+      contents: read
     uses: reqstool/.github/.github/workflows/typescript-lint.yml@main
 
   build:
     needs: lint
+    permissions:
+      contents: read
     uses: reqstool/.github/.github/workflows/typescript-build.yml@main
     with:
       use-xvfb: true
