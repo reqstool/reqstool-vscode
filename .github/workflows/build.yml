@@ -10,6 +10,24 @@ on:
         required: false
         default: ""
         type: string
+      ref:
+        description: "Branch, tag or SHA to build. Empty = the caller's ref."
+        required: false
+        type: string
+        default: ""
+      version:
+        description: "Stamp package.json with this version before packaging. Empty = leave as-is."
+        required: false
+        type: string
+        default: ""
+      artifact-name:
+        description: >
+          Name to upload the VSIX under. The release flow runs this workflow
+          twice in one run -- once on the branch, once on the tag -- and
+          upload-artifact rejects a duplicate name.
+        required: false
+        type: string
+        default: "dist"
   workflow_dispatch:
     inputs:
       reqstool_version:
@@ -27,13 +45,24 @@ on:
       - synchronize
 
 jobs:
+  # `permissions: {}` above grants the jobs nothing, and a called workflow may
+  # not request more than its caller was granted -- asking for more is rejected
+  # before any job runs, with no check run produced to say so. Both callees
+  # declare `contents: read`, so both callers have to grant it.
   lint:
+    permissions:
+      contents: read
     uses: reqstool/.github/.github/workflows/typescript-lint.yml@main
 
   build:
     needs: lint
+    permissions:
+      contents: read
     uses: reqstool/.github/.github/workflows/typescript-build.yml@main
     with:
       use-xvfb: true
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      artifact-name: ${{ inputs.artifact-name || 'dist' }}
       dependency-version: ${{ inputs.reqstool_version || 'latest' }}
       dependency-install-command: ${{ inputs.reqstool_version != '' && 'pipx install reqstool=={version}' || 'pipx install reqstool' }}
