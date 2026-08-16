@@ -1,0 +1,40 @@
+name: Publish dry run
+
+# Validates packaging against both registries without uploading. Carried over
+# from publish_vscode_ext.yml, whose push/dispatch legs did exactly this -- only
+# its release leg was replaced by release.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reqstool_version:
+        description: "reqstool version to pin in extension (empty = latest)"
+        required: false
+        default: ""
+        type: string
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+    with:
+      reqstool_version: ${{ inputs.reqstool_version || '' }}
+
+  dry-run:
+    needs: build
+    uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@main
+    secrets: inherit
+    permissions:
+      contents: read
+    with:
+      dry-run: true
+      registries: open-vsx,vscode-marketplace
+      dependency-name: reqstoolVersion
+      dependency-version: ${{ inputs.reqstool_version || '' }}
