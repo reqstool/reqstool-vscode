@@ -1,7 +1,7 @@
 {
   "name": "reqstool",
   "displayName": "reqstool Support",
-  "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
+  "description": "Requirements traceability for source code via reqstool LSP \u2014 hover, completion, diagnostics, go-to-definition",
   "version": "0.0.0-dev",
   "reqstoolVersion": "0.12.0",
   "publisher": "reqstool",
@@ -223,11 +223,11 @@
     "@vscode/test-cli": "0.0.15",
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "3.9.2",
-    "esbuild": "^0.28.0",
+    "esbuild": "0.28.2",
     "eslint": "10.8.1",
-    "eslint-config-prettier": "^10.1.8",
+    "eslint-config-prettier": "10.1.8",
     "mocha-junit-reporter": "2.2.1",
-    "prettier": "^3.8.3",
+    "prettier": "3.9.6",
     "rimraf": "6.1.3",
     "typescript": "6.0.3",
     "vscode-extension-tester": "8.24.0"
