@@ -41,7 +41,7 @@ permissions:
 
 jobs:
   prepare:
-    uses: reqstool/.github/.github/workflows/common-release-prepare.yml@main
+    uses: reqstool/.github/.github/workflows/common-release-prepare.yml@ef815eae0bca7160cdc714126cac73f76d638b39 # 1.0.0
     permissions:
       contents: read
     with:
@@ -67,7 +67,7 @@ jobs:
   tag:
     needs: [prepare, checks]
     if: ${{ !inputs.dry-run }}
-    uses: reqstool/.github/.github/workflows/common-release-tag.yml@main
+    uses: reqstool/.github/.github/workflows/common-release-tag.yml@ef815eae0bca7160cdc714126cac73f76d638b39 # 1.0.0
     permissions:
       contents: write
     with:
@@ -90,7 +90,7 @@ jobs:
 
   assets:
     needs: [prepare, build-tagged]
-    uses: reqstool/.github/.github/workflows/common-release-assets.yml@main
+    uses: reqstool/.github/.github/workflows/common-release-assets.yml@ef815eae0bca7160cdc714126cac73f76d638b39 # 1.0.0
     permissions:
       contents: write
     with:
@@ -103,7 +103,7 @@ jobs:
   publish-to-marketplaces:
     needs: [prepare, assets]
     if: ${{ needs.prepare.outputs.prerelease != 'true' }}
-    uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@main
+    uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@ef815eae0bca7160cdc714126cac73f76d638b39 # 1.0.0
     permissions:
       contents: write
     secrets: inherit
@@ -129,7 +129,7 @@ jobs:
   promote:
     needs: [prepare, assets, publish-to-marketplaces]
     if: ${{ !inputs.dry-run && !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-    uses: reqstool/.github/.github/workflows/common-release-promote.yml@main
+    uses: reqstool/.github/.github/workflows/common-release-promote.yml@ef815eae0bca7160cdc714126cac73f76d638b39 # 1.0.0
     permissions:
       contents: write
     with:

@@ -29,7 +29,7 @@ jobs:
 
   dry-run:
     needs: build
-    uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@main
+    uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@ef815eae0bca7160cdc714126cac73f76d638b39 # 1.0.0
     secrets: inherit
     permissions:
       contents: read
