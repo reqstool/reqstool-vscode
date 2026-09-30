@@ -29,5 +29,10 @@
       matchDepNames: ["reqstool"],
       groupName: "reqstool",
     },
+    {
+      // mocha-junit-reporter 2.2.1 crashes on mocha 12 (reqstool-vscode#143).
+      matchDepNames: ["mocha"],
+      allowedVersions: "<12",
+    },
   ],
 }
