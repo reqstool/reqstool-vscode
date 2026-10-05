@@ -232,6 +232,6 @@
     "prettier": "3.9.9",
     "rimraf": "6.1.3",
     "typescript": "6.0.3",
-    "vscode-extension-tester": "8.27.0"
+    "vscode-extension-tester": "8.28.0"
   }
 }
