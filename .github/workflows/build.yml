@@ -52,13 +52,13 @@ jobs:
   lint:
     permissions:
       contents: read
-    uses: reqstool/.github/.github/workflows/typescript-lint.yml@a4203a58cec87861655512b6b277a859db385796 # 1.1.0
+    uses: reqstool/.github/.github/workflows/typescript-lint.yml@47ea2f814efd0a4dd02bce2d9fd9d97725945cf6 # 1.2.0
 
   build:
     needs: lint
     permissions:
       contents: read
-    uses: reqstool/.github/.github/workflows/typescript-build.yml@a4203a58cec87861655512b6b277a859db385796 # 1.1.0
+    uses: reqstool/.github/.github/workflows/typescript-build.yml@47ea2f814efd0a4dd02bce2d9fd9d97725945cf6 # 1.2.0
     with:
       use-xvfb: true
       ref: ${{ inputs.ref }}
