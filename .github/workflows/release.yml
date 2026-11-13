@@ -41,7 +41,7 @@ permissions:
 
 jobs:
   prepare:
-    uses: reqstool/.github/.github/workflows/common-release-prepare.yml@47ea2f814efd0a4dd02bce2d9fd9d97725945cf6 # 1.2.0
+    uses: reqstool/.github/.github/workflows/common-release-prepare.yml@6fc8d3e3d4c3fdf7a83cb7b7a274e4761486ca71 # 1.2.1
     permissions:
       contents: read
     with:
@@ -67,7 +67,7 @@ jobs:
   tag:
     needs: [prepare, checks]
     if: ${{ !inputs.dry-run }}
-    uses: reqstool/.github/.github/workflows/common-release-tag.yml@47ea2f814efd0a4dd02bce2d9fd9d97725945cf6 # 1.2.0
+    uses: reqstool/.github/.github/workflows/common-release-tag.yml@6fc8d3e3d4c3fdf7a83cb7b7a274e4761486ca71 # 1.2.1
     permissions:
       contents: write
     with:
@@ -90,7 +90,7 @@ jobs:
 
   assets:
     needs: [prepare, build-tagged]
-    uses: reqstool/.github/.github/workflows/common-release-assets.yml@47ea2f814efd0a4dd02bce2d9fd9d97725945cf6 # 1.2.0
+    uses: reqstool/.github/.github/workflows/common-release-assets.yml@6fc8d3e3d4c3fdf7a83cb7b7a274e4761486ca71 # 1.2.1
     permissions:
       contents: write
     with:
@@ -103,7 +103,7 @@ jobs:
   publish-to-marketplaces:
     needs: [prepare, assets]
     if: ${{ needs.prepare.outputs.prerelease != 'true' }}
-    uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@47ea2f814efd0a4dd02bce2d9fd9d97725945cf6 # 1.2.0
+    uses: reqstool/.github/.github/workflows/typescript-publish-to-vscode.yml@6fc8d3e3d4c3fdf7a83cb7b7a274e4761486ca71 # 1.2.1
     permissions:
       contents: write
     secrets: inherit
@@ -129,7 +129,7 @@ jobs:
   promote:
     needs: [prepare, assets, publish-to-marketplaces]
     if: ${{ !inputs.dry-run && !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-    uses: reqstool/.github/.github/workflows/common-release-promote.yml@47ea2f814efd0a4dd02bce2d9fd9d97725945cf6 # 1.2.0
+    uses: reqstool/.github/.github/workflows/common-release-promote.yml@6fc8d3e3d4c3fdf7a83cb7b7a274e4761486ca71 # 1.2.1
     permissions:
       contents: write
     with:
