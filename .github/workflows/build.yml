@@ -47,18 +47,18 @@ on:
 jobs:
   # `permissions: {}` above grants the jobs nothing, and a called workflow may
   # not request more than its caller was granted -- asking for more is rejected
-  # before any job runs, with no check run produced to say so. Both callees
-  # declare `contents: read`, so both callers have to grant it.
+  # before any job runs, with no check run produced to say so. Every callee
+  # declares `contents: read`, so every caller has to grant it.
   lint:
     permissions:
       contents: read
-    uses: reqstool/.github/.github/workflows/typescript-lint.yml@6fc8d3e3d4c3fdf7a83cb7b7a274e4761486ca71 # 1.2.1
+    uses: reqstool/.github/.github/workflows/typescript-lint.yml@ci/385-shared-python-build # SPIKE: pin to release SHA
 
   build:
     needs: lint
     permissions:
       contents: read
-    uses: reqstool/.github/.github/workflows/typescript-build.yml@6fc8d3e3d4c3fdf7a83cb7b7a274e4761486ca71 # 1.2.1
+    uses: reqstool/.github/.github/workflows/typescript-build.yml@ci/385-shared-python-build # SPIKE: pin to release SHA
     with:
       use-xvfb: true
       ref: ${{ inputs.ref }}
@@ -66,3 +66,25 @@ jobs:
       artifact-name: ${{ inputs.artifact-name || 'dist' }}
       dependency-version: ${{ inputs.reqstool_version || 'latest' }}
       dependency-install-command: ${{ inputs.reqstool_version != '' && 'pipx install reqstool=={version}' || 'pipx install reqstool' }}
+
+  # The extension host tests need a downloaded VS Code; run them on the other
+  # operating systems too (no xvfb needed there).
+  smoke:
+    needs: build
+    permissions:
+      contents: read
+    uses: reqstool/.github/.github/workflows/typescript-smoke.yml@ci/385-shared-python-build # SPIKE: pin to release SHA
+    with:
+      command: npm test
+
+  # Single stable required check: survives job renames and matrix changes.
+  ci:
+    if: ${{ always() }}
+    needs: [lint, build, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every needed job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | python3 -c 'import json,sys; r={k:v["result"] for k,v in json.load(sys.stdin).items()}; print(r); sys.exit(0 if all(v=="success" for v in r.values()) else 1)'
