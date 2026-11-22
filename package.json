@@ -3,7 +3,7 @@
   "displayName": "reqstool Support",
   "description": "Requirements traceability for source code via reqstool LSP — hover, completion, diagnostics, go-to-definition",
   "version": "0.0.0-dev",
-  "reqstoolVersion": "0.12.2",
+  "reqstoolVersion": "1.0.1",
   "publisher": "reqstool",
   "author": "reqstool",
   "icon": "images/icon.png",
@@ -12,7 +12,7 @@
     "url": "https://github.com/reqstool/reqstool-vscode"
   },
   "engines": {
-    "vscode": "^1.138.0"
+    "vscode": "^1.146.0"
   },
   "categories": [
     "Linters",
@@ -212,26 +212,26 @@
     }
   },
   "dependencies": {
-    "vscode-languageclient": "10.1.2"
+    "vscode-languageclient": "11.0.0"
   },
   "devDependencies": {
     "@types/mocha": "10.0.10",
-    "@types/node": "25.9.8",
-    "@types/vscode": "1.138.0",
-    "@typescript-eslint/eslint-plugin": "8.70.1",
-    "@typescript-eslint/parser": "8.70.1",
+    "@types/node": "26.6.6",
+    "@types/vscode": "1.146.0",
+    "@typescript-eslint/eslint-plugin": "8.73.0",
+    "@typescript-eslint/parser": "8.73.0",
     "@vscode/test-cli": "0.0.15",
     "@vscode/test-electron": "3.1.0",
-    "@vscode/vsce": "4.0.0",
+    "@vscode/vsce": "4.1.1",
     "esbuild": "0.28.2",
-    "eslint": "10.11.0",
+    "eslint": "10.15.0",
     "eslint-config-prettier": "10.1.8",
     "mocha": "11.8.0",
     "mocha-junit-reporter": "2.2.1",
-    "ovsx": "1.2.0",
-    "prettier": "3.9.9",
-    "rimraf": "6.1.3",
+    "ovsx": "1.4.0",
+    "prettier": "3.10.1",
+    "rimraf": "6.1.4",
     "typescript": "6.0.3",
-    "vscode-extension-tester": "8.27.0"
+    "vscode-extension-tester": "8.29.0"
   }
 }
