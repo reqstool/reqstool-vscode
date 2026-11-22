@@ -151,9 +151,15 @@ export async function activate(context: vscode.ExtensionContext) {
     options: { env: { ...process.env, PYTHONUNBUFFERED: "1" } },
   };
 
-  const outputChannel = vscode.window.createOutputChannel("reqstool");
-  const traceOutputChannel =
-    vscode.window.createOutputChannel("reqstool Trace");
+  const outputChannel = vscode.window.createOutputChannel("reqstool", {
+    log: true,
+  });
+  const traceOutputChannel = vscode.window.createOutputChannel(
+    "reqstool Trace",
+    {
+      log: true,
+    },
+  );
 
   logServerInfo(outputChannel, activeVersion, activeSource, executable);
 
