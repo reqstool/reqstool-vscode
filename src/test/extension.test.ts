@@ -11,6 +11,8 @@ describe("Extension smoke tests", () => {
   });
 
   it("reqstool.selectServerSource command is registered", async () => {
+    // Activation is driven by onStartupFinished, which can fire after the tests start on slow runners.
+    await vscode.extensions.getExtension("reqstool.reqstool")?.activate();
     const commands = await vscode.commands.getCommands(true);
     assert.ok(
       commands.includes("reqstool.selectServerSource"),
