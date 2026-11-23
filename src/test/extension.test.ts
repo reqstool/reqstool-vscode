@@ -11,9 +11,6 @@ describe("Extension smoke tests", () => {
   });
 
   it("reqstool.selectServerSource command is registered", async function () {
-    // Activation (onStartupFinished) registers the command early but can start after
-    // the tests do, and is slow on macOS/Windows runners, so poll instead of
-    // asserting immediately. Waiting for full activation would also wait for the server.
     this.timeout(60000);
     const deadline = Date.now() + 55000;
     let registered = false;
