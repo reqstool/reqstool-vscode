@@ -47,8 +47,6 @@ on:
 jobs:
   # `permissions: {}` above grants the jobs nothing, and a called workflow may
   # not request more than its caller was granted -- asking for more is rejected
-  # before any job runs, with no check run produced to say so. Both callees
-  # declare `contents: read`, so both callers have to grant it.
   lint:
     permissions:
       contents: read
@@ -66,3 +64,22 @@ jobs:
       artifact-name: ${{ inputs.artifact-name || 'dist' }}
       dependency-version: ${{ inputs.reqstool_version || 'latest' }}
       dependency-install-command: ${{ inputs.reqstool_version != '' && 'pipx install reqstool=={version}' || 'pipx install reqstool' }}
+
+  smoke:
+    needs: build
+    permissions:
+      contents: read
+    uses: reqstool/.github/.github/workflows/typescript-smoke.yml@91cd368066d5458b5d46bdf34c4d8ca483f6633f # 1.2.2
+    with:
+      command: npm test || { grep -E -B2 -A12 '<failure' test-results.xml; exit 1; }
+
+  ci:
+    if: ${{ always() }}
+    needs: [lint, build, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every needed job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | python3 -c 'import json,sys; r={k:v["result"] for k,v in json.load(sys.stdin).items()}; print(r); sys.exit(0 if all(v=="success" for v in r.values()) else 1)'

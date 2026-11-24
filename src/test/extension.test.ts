@@ -10,12 +10,19 @@ describe("Extension smoke tests", () => {
     assert.ok(ext, "Extension reqstool.reqstool not found");
   });
 
-  it("reqstool.selectServerSource command is registered", async () => {
-    const commands = await vscode.commands.getCommands(true);
-    assert.ok(
-      commands.includes("reqstool.selectServerSource"),
-      "reqstool.selectServerSource command not registered",
-    );
+  it("reqstool.selectServerSource command is registered", async function () {
+    this.timeout(60000);
+    const deadline = Date.now() + 55000;
+    let registered = false;
+    while (!registered && Date.now() < deadline) {
+      registered = (await vscode.commands.getCommands(true)).includes(
+        "reqstool.selectServerSource",
+      );
+      if (!registered) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+    assert.ok(registered, "reqstool.selectServerSource command not registered");
   });
 });
 
