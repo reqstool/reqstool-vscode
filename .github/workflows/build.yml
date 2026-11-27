@@ -50,13 +50,13 @@ jobs:
   lint:
     permissions:
       contents: read
-    uses: reqstool/.github/.github/workflows/typescript-lint.yml@84c822d93b538ed6c2e650ba1085aab271d018f3 # 1.3.0
+    uses: reqstool/.github/.github/workflows/typescript-lint.yml@ff7323b2f1214898e8f3191ffab3d8bdf478f208 # 1.3.1
 
   build:
     needs: lint
     permissions:
       contents: read
-    uses: reqstool/.github/.github/workflows/typescript-build.yml@84c822d93b538ed6c2e650ba1085aab271d018f3 # 1.3.0
+    uses: reqstool/.github/.github/workflows/typescript-build.yml@ff7323b2f1214898e8f3191ffab3d8bdf478f208 # 1.3.1
     with:
       use-xvfb: true
       ref: ${{ inputs.ref }}
@@ -69,7 +69,7 @@ jobs:
     needs: build
     permissions:
       contents: read
-    uses: reqstool/.github/.github/workflows/typescript-smoke.yml@84c822d93b538ed6c2e650ba1085aab271d018f3 # 1.3.0
+    uses: reqstool/.github/.github/workflows/typescript-smoke.yml@ff7323b2f1214898e8f3191ffab3d8bdf478f208 # 1.3.1
     with:
       command: npm test || { grep -E -B2 -A12 '<failure' test-results.xml; exit 1; }
 
